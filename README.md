@@ -1,6 +1,24 @@
-# Fotônica Computacional - Análise Modal (Guias Planares 1D, TE)
+# Fotônica Computacional - Análise Modal 
 
 <p align="center"> <img src="https://codeconverter.com/images/convert-matlab-to-python.png" alt="MATLAB → Python" style="width:20%;">
+
+---
+## Atividade 1 : 
+[🖥️FotonicaComputacional_BlocoA_TE1D_2025_09_13_v1.ipynb](https://github.com/thallescotta/fotonica-computacional-uff-2025-2/blob/main/%F0%9F%96%A5%EF%B8%8FFotonicaComputacional_BlocoA_TE1D_2025_09_13_v1.ipynb)
+
+<p align="center">
+  <img src="https://colab.research.google.com/assets/colab-badge.svg" alt="Google Colab" />
+  &nbsp;
+  <img src="https://img.shields.io/badge/NBViewer-Render-blue?logo=jupyter" alt="NBViewer" />
+  &nbsp;
+  <img src="https://img.shields.io/badge/GitHub-Notebook-black?logo=github" alt="GitHub Notebook" />
+  &nbsp;
+  <img src="https://img.shields.io/badge/MATLAB-Octave%20compatible-orange?logo=mathworks&logoColor=white" alt="MATLAB/Octave" />
+</p>
+
+
+---
+
 
 > **Aluno:** Thalles Cotta Fontainha - **PPGIO Matrícula:** 2410091DIOAMA  
 > **Disciplina:** TCE11209 - Fotônica Computacional (UFF)  
