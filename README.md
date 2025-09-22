@@ -4,17 +4,18 @@
 
 ---
 ## Atividade 1 : 
-[🖥️FotonicaComputacional_BlocoA_TE1D_2025_09_13_v1.ipynb](https://github.com/thallescotta/fotonica-computacional-uff-2025-2/blob/main/%F0%9F%96%A5%EF%B8%8FFotonicaComputacional_BlocoA_TE1D_2025_09_13_v1.ipynb)
+[diagrama_dispersao_TE_FDM_1D](https://github.com/thallescotta/fotonica-computacional-uff-2025-2/blob/main/%F0%9F%96%A5%EF%B8%8FFotonicaComputacional_BlocoA_TE1D_2025_09_13_v1.ipynb)
 
 <p align="center">
-  <img src="https://colab.research.google.com/assets/colab-badge.svg" alt="Google Colab" />
+  <img src="https://img.shields.io/badge/Python-3.11%2B-blue?logo=python&logoColor=white" alt="Python" />
   &nbsp;
-  <img src="https://img.shields.io/badge/NBViewer-Render-blue?logo=jupyter" alt="NBViewer" />
+  <img src="https://img.shields.io/badge/Jupyter-Notebook-orange?logo=jupyter&logoColor=white" alt="Jupyter Notebook" />
   &nbsp;
-  <img src="https://img.shields.io/badge/GitHub-Notebook-black?logo=github" alt="GitHub Notebook" />
+  <img src="https://img.shields.io/badge/NumPy-1.x-lightgrey?logo=numpy&logoColor=013243" alt="NumPy" />
   &nbsp;
-  <img src="https://img.shields.io/badge/MATLAB-Octave%20compatible-orange?logo=mathworks&logoColor=white" alt="MATLAB/Octave" />
+  <img src="https://img.shields.io/badge/Matplotlib-3.x-lightgrey?logo=plotly&logoColor=white" alt="Matplotlib" />
 </p>
+
 
 
 ---
@@ -28,20 +29,26 @@ Projeto de **análise modal** em **guia planar 1D** (modos **TE**), formulado co
 
 ---
 
-## Pipeline (A → B → C)
-1. **Bloco A: Pré-processamento:** parâmetros físicos, domínio/malha e perfil **$n(x)$** com **camadas generalizadas**.  
-2. **Bloco B: Montagem matricial:** discretização da 2ª derivada (diferenças finitas, CC Dirichlet) e montagem das matrizes do problema modal.  
-3. **Bloco C: Solução e análise:** autovalores/autovetores, seleção de modos guiados ($n_\text{clad} < n_\mathrm{eff} < n_\text{core}$), normalização e gráficos.
+## Pipeline do Projeto
+
+O fluxo completo é dividido em **três etapas principais**, refletidas nos blocos de código:
+
+1. **Bloco 1 – Pré-processamento**  
+   Define os parâmetros físicos, constrói a malha 1D e monta o perfil de índice $n(x)$ com camadas generalizadas.  
+
+2. **Bloco 2 – Processamento dos Modos**  
+   Monta as matrizes do problema modal (diferenças finitas para a 2ª derivada com condição de contorno de Dirichlet), resolve o autoproblema, seleciona os modos guiados  
+   ($n_1 < n_\mathrm{eff} < n_2$), normaliza os campos e gera os gráficos dos modos.
+
+3. **Bloco 3 – Pós-processamento (Diagrama de Dispersão)**  
+   Varre a razão $d/\lambda$, calcula as curvas $n_\mathrm{eff}(d/\lambda)$ para cada ordem de modo (TE0, TE1, …) e produz o diagrama de dispersão final.
+
+> Este encadeamento **Pré → Processamento dos Modos → Pós** resume todo o pipeline:  
+> da preparação da malha, passando pela solução do problema modal, até a análise final com o diagrama de dispersão.
+
 
 > **Caso do slide (simétrico, pág. 15):** $n_2 = 3{,}60$, $n_1 = n_3 = 3{,}55$.
 
----
-
-## Resultados Esperados
-- **$n_\mathrm{eff}$** dos modos TE (entre **$n_\text{clad}$** e **$n_\text{core}$**).  
-- **Perfis $E_m(x)$** normalizados (oscilatório no núcleo, evanescente nas cascas).  
-- Gráficos de **$n(x)$** e dos **modos**.  
-- Checagens numéricas (dimensões/simetria das matrizes; critério de guiamento).
 
 ---
 
