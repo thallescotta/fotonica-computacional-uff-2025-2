@@ -3,8 +3,8 @@
 <p align="center"> <img src="https://codeconverter.com/images/convert-matlab-to-python.png" alt="MATLAB → Python" style="width:20%;">
 
 ---
-## Atividade 1 : 
-[diagrama_dispersao_TE_FDM_1D](https://github.com/thallescotta/fotonica-computacional-uff-2025-2/blob/main/%F0%9F%96%A5%EF%B8%8FFotonicaComputacional_BlocoA_TE1D_2025_09_13_v1.ipynb)
+## Atividade 1
+[diagrama_dispersao_TE_FDM_1D.ipynb](https://github.com/thallescotta/fotonica-computacional-uff-2025-2/blob/main/diagrama_dispersao_TE_FDM_1D.ipynb)
 
 <p align="center">
   <img src="https://img.shields.io/badge/Python-3.11%2B-blue?logo=python&logoColor=white" alt="Python" />
