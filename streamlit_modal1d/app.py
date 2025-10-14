@@ -63,13 +63,15 @@ st.markdown(
     <div style="display:flex; gap:24px; align-items:center; margin:10px 0 12px 0;">
       <img src="{LOGO_URL}" alt="Logo PPGIO" style="width:240px; max-width:40vw;" />
       <div>
-        <h1 style="margin:0;">Matrizes A e B — Guia Planar (Pré-processamento)</h1>
+        <h1 style="margin:0;">Matrizes A e B - Guia Planar</h1>
         <p style="margin:6px 0 0 0; opacity:.9;">
-          <strong>Thalles Cotta Fontainha</strong> — <strong>PPGIO Matrícula:</strong> 2410091DIOAMA
+          <strong>Thalles Cotta Fontainha</strong> - <strong>PPGIO Matrícula:</strong> 2410091DIOAMA
         </p>
         <p style="margin:0; opacity:.9;">
           <em>"Fotonica Analise Modal e BPM V2.pdf"</em> recebido em 11/09/2025 •
+        </p>
           <strong>Disciplina:</strong> Fotônica Computacional (TCE11209 — UFF) •
+        </p>
           <strong>Professor:</strong> Andres Pablo Lopez Barbero
         </p>
       </div>
@@ -201,5 +203,6 @@ if montar:
 
     except Exception as e:
         st.error(f"Erro ao montar as matrizes: {e}")
+
 
 
