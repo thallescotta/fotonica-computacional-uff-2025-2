@@ -11,7 +11,7 @@ st.set_page_config(page_title="Matrizes A e B (Guia Planar)", layout="wide")
 st.markdown(
     """
     <style>
-      .stApp { background: #ffffff; color: #0f172a; }
+      .stApp { background: #000000; color: #e5e7eb; }
       h1, h2, h3 { line-height: 1.2; }
 
       /* aumenta a largura máxima do container principal (~40% maior que o padrão) */
@@ -201,3 +201,4 @@ if montar:
 
     except Exception as e:
         st.error(f"Erro ao montar as matrizes: {e}")
+
