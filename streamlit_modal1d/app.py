@@ -9,7 +9,8 @@ st.set_page_config(page_title="Matrizes A e B (Guia Planar)", layout="centered")
 
 # ======= CAPA (logo + seus dados) =======
 # use o link RAW do GitHub para carregar a imagem no Streamlit
-LOGO_URL = "https://raw.githubusercontent.com/thallescotta/logo-ppgio-vetorizado/main/SVG-PPGIO%20(transparent).png"
+LOGO_URL = "https://raw.githubusercontent.com/thallescotta/logo-ppgio-vetorizado/main/SVG-PPGIO_invert_preto_para_branco.png"
+
 
 st.markdown(
     f"""
@@ -61,29 +62,35 @@ st.info("Ajuste os parâmetros na barra lateral e clique **Montar A e B**.")
 
 st.info(
     """
-**Pseudocódigo (etapa 1 — A e B)**
+### Etapa 1 — Pré-processamento: montar **A** e **B**
 
-Ler: n_camadas; largura[i]; n[i]; Np; λ
+**Entradas**
+- `n_camadas`, `largura[i]`, `n[i]`, `Np`, `λ` (mesmas unidades de `largura`)
 
-L_total = sum(largura); Δx = L_total/(Np-1); k0 = 2π/λ
+**Cálculos**
+- `L_total = sum(largura)`
+- `Δx = L_total/(Np-1)`
+- `k0 = 2π/λ`
+- `x = linspace(0, L_total, Np)`
 
-x = linspace(0, L_total, Np)
+**Perfil `n(x)`**
+- `limites = [0, cumsum(largura)]`
+- para cada ponto `x_j`:
+  - encontre a camada `c` tal que `limites[c-1] ≤ x_j < limites[c]`
+  - defina `n_x[j] = n[c]`
 
-limites = [0, cumsum(largura)]
-para cada x_j:
-achar camada c tal que limites[c-1] ≤ x_j < limites[c]
-n_x[j] = n[c]
+**Operadores / Matrizes**
+- `D2 = tridiag(1, -2, 1) / Δx²`
+- `Diag_n2 = diag(n_x²)`
+- `A = D2 + k0² * Diag_n2`
+- `B = k0² * I`
 
-D2 = tridiag(1, -2, 1) / Δx²
-
-Diag_n2 = diag(n_x²)
-
-A = D2 + k0² * Diag_n2
-B = k0² * I
-
-Imprimir checks: shapes, A[0,0], A[0,1], A[1,0], A[mid,mid], B[0,0], B[-1,-1]
+**Checks para conferência**
+- `A.shape`, `B.shape`
+- `A[0,0]`, `A[0,1]`, `A[1,0]`, `A[mid,mid]`, `B[0,0]`, `B[-1,-1]`
     """
 )
+
 
 # ======= LÓGICA =======
 def montar_AB(larguras, indices_n, Np, lamb):
@@ -157,3 +164,4 @@ if montar:
         st.write(np.round((n_x[:12])**2, 6))
     except Exception as e:
         st.error(f"Erro ao montar as matrizes: {e}")
+
