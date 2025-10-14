@@ -85,7 +85,7 @@ LOGO_URL = "https://raw.githubusercontent.com/thallescotta/logo-ppgio-vetorizado
 st.markdown(
     f"""
     <div style="display:flex; gap:24px; align-items:center; margin:10px 0 12px 0;">
-      <img src="{LOGO_URL}" alt="Logo PPGIO" style="width:480px; max-width:40vw;" />
+      <img src="{LOGO_URL}" alt="Logo PPGIO" style="width:360px; max-width:40vw;" />
       <div>
         <h1 style="margin:0;">Matrizes A e B - Guia Planar</h1>
         <p style="margin:6px 0 0 0; opacity:.9;">
@@ -163,9 +163,9 @@ st.markdown("""
 Entradas: n_camadas, largura[i], n[i], Np, λ
 
 1) L_total = sum(largura)                 # largura total
-2) Δx = L_total/(Np-1)                    # passo da malha
+2) Δx = L_total/(NP-1)                    # passo da malha
 3) k0 = 2π/λ                              # número de onda
-4) x = linspace(0, L_total, Np)           # grade 1D
+4) x = linspace(0, L_total, NP)           # grade 1D
 
 5) limites = [0] + cumsum(largura)        # fronteiras das camadas
 6) para x_j: achar c s/ limites[c-1] ≤ x_j < limites[c]; n_x[j] = n[c]
@@ -215,11 +215,11 @@ if montar:
     try:
         A, B, x, n_x, dx, k0, L_total = montar_AB(larguras, indices_n, Np, lamb)
 
-        st.subheader("Resumo / Checks")
+        st.subheader("Resumo:")
         c1, c2, c3 = st.columns(3)
-        c1.metric("n_camadas", len(larguras))
-        c2.metric("Np", Np)
-        c3.metric("L_total", f"{L_total:.6g}")
+        c1.metric("Numero de camadas", len(larguras))
+        c2.metric("NP", Np)
+        c3.metric("Largura total", f"{L_total:.6g}")
 
         c4, c5, c6 = st.columns(3)
         c4.metric("Δx", f"{dx:.6g}")
@@ -243,3 +243,4 @@ if montar:
 
     except Exception as e:
         st.error(f"Erro ao montar as matrizes: {e}")
+
