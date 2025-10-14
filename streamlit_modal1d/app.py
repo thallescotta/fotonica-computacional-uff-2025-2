@@ -32,7 +32,7 @@ st.markdown(
       /* botões visíveis no tema claro */
       .stButton > button {
           background: #2563eb;
-          color: #ffffff;
+          color: #e5e7eb;
           border: 1px solid #1e40af;
           border-radius: 10px;
           padding: 0.6rem 1rem;
@@ -201,4 +201,5 @@ if montar:
 
     except Exception as e:
         st.error(f"Erro ao montar as matrizes: {e}")
+
 
