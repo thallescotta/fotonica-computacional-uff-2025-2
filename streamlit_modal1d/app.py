@@ -6,36 +6,44 @@ import streamlit as st
 
 st.set_page_config(page_title="Matrizes A e B (Guia Planar)", layout="wide")
 
-# ======= ESTILO (fundo branco e área principal mais larga) =======
-
+# ======= ESTILO (tema escuro + área principal mais larga + sidebar azul) =======
 st.markdown(
     """
     <style>
-      /* --- SIDEBAR: azul escuro e contraste --- */
-      section[data-testid="stSidebar"]{
-        background: #0b1220;              /* azul escuro */
-        border-right: 1px solid #0f172a;  /* linha discreta */
+      /* App escuro */
+      .stApp { background: #000000; color: #e5e7eb; }
+      h1, h2, h3 { line-height: 1.2; color: #e5e7eb; }
+
+      /* Aumenta a largura útil do conteúdo (~40% maior) */
+      .main .block-container {
+        max-width: 1400px;   /* ajuste para 1600/1800 se quiser ainda maior */
+        padding-top: 0.5rem;
       }
-      /* textos/labels da sidebar mais legíveis */
+
+      /* Sidebar azul escuro */
+      section[data-testid="stSidebar"]{
+        background: #0b1220;
+        border-right: 1px solid #0f172a;
+      }
       section[data-testid="stSidebar"] * { color: #e5e7eb !important; }
       section[data-testid="stSidebar"] h1,
       section[data-testid="stSidebar"] h2,
       section[data-testid="stSidebar"] h3 { color: #e5e7eb !important; }
 
-      /* inputs dentro da sidebar com fundo azul escuro */
+      /* Inputs na sidebar */
       section[data-testid="stSidebar"] div[data-baseweb="input"] > div{
         background: #111a2b !important;
         color: #e5e7eb !important;
         border-radius: 10px;
-        border: 1px solid #1e3a8a;       /* borda azul */
+        border: 1px solid #1e3a8a;
       }
       section[data-testid="stSidebar"] div[data-baseweb="input"] > div:focus-within{
-        border-color: #60a5fa;           /* foco azul claro */
+        border-color: #60a5fa;
         box-shadow: 0 0 0 1px #60a5fa inset;
       }
 
-      /* botão na sidebar com boa visibilidade no tema escuro */
-      section[data-testid="stSidebar"] .stButton > button{
+      /* Botões visíveis no escuro */
+      .stButton > button{
         background: #2563eb;
         color: #ffffff;
         border: 1px solid #1e40af;
@@ -44,15 +52,32 @@ st.markdown(
         font-weight: 700;
         box-shadow: 0 4px 14px rgba(37,99,235,0.25);
       }
-      section[data-testid="stSidebar"] .stButton > button:hover{
-        background: #1d4ed8;
-        border-color: #1e3a8a;
+      .stButton > button:hover{ background: #1d4ed8; border-color: #1e3a8a; }
+
+      /* Boxes/expanders */
+      .stAlert, .stDataFrame, .st-expander {
+        border-radius: 12px !important;
+        border: 1px solid #1f2937;
+      }
+
+      /* Nota compacta (pseudocódigo) */
+      .note-small{
+        background:#0f1a2b;
+        border:1px solid #1f2937;
+        border-radius:12px;
+        padding:10px 14px;
+        font-size:12px;
+        line-height:1.25;
+        color:#e5e7eb;
+      }
+      .note-small pre{
+        margin:6px 0 0 0;
+        white-space:pre-wrap;
       }
     </style>
     """,
     unsafe_allow_html=True,
 )
-
 
 # ======= CAPA (logo + seus dados) =======
 LOGO_URL = "https://raw.githubusercontent.com/thallescotta/logo-ppgio-vetorizado/main/SVG-PPGIO_invert_preto_para_branco.png"
@@ -69,62 +94,68 @@ st.markdown(
         <p style="margin:0; opacity:.9;">
           <em>"Fotonica Analise Modal e BPM V2.pdf"</em> recebido em 11/09/2025
         </p>
-          <strong>Disciplina:</strong> Fotônica Computacional (TCE11209 - UFF)
-        </p>
+        <p style="margin:0; opacity:.9;">
+          <strong>Disciplina:</strong> Fotônica Computacional (TCE11209 - UFF) •
           <strong>Professor:</strong> Andres Pablo Lopez Barbero
         </p>
       </div>
     </div>
-
-    <style>
-  .note-small{
-    background:#0f1a2b;              /* azul escuro da sua UI */
-    border:1px solid #1f2937;
-    border-radius:12px;
-    padding:10px 14px;
-    font-size:12px;                   /* menor */
-    line-height:1.25;                 /* compacto */
-    color:#e5e7eb;
-  }
-  .note-small pre{
-    margin:6px 0 0 0;
-    white-space:pre-wrap;             /* quebra se precisar */
-  }
-</style>
-
     """,
     unsafe_allow_html=True,
 )
 
-# ======= SIDEBAR (Parâmetros) =======
+# ======= SIDEBAR (Parâmetros com padrões editáveis e persistência) =======
 with st.sidebar:
     st.header("Parâmetros")
+
     n_camadas = st.number_input("Número de camadas (≥2)", min_value=2, value=3, step=1)
+
+    # Padrões globais (o usuário define; não há valores fixos no código)
+    L_default = st.number_input(
+        "Largura padrão (para novas camadas)", min_value=1e-12, value=1.00, step=0.01, format="%.2f"
+    )
+    n_default = st.number_input(
+        "n padrão (para novas camadas)", min_value=1e-12, value=1.00, step=0.01, format="%.2f"
+    )
+
     st.markdown("**Informe largura e índice n para cada camada** (mesmas unidades que λ).")
+
     larguras, indices_n = [], []
     for i in range(n_camadas):
         c1, c2 = st.columns(2)
+        key_L = f"L{i}"
+        key_n = f"n{i}"
+        # Inicializa com os padrões apenas na 1ª vez; depois mantém o que o usuário editou
+        if key_L not in st.session_state:
+            st.session_state[key_L] = float(L_default)
+        if key_n not in st.session_state:
+            st.session_state[key_n] = float(n_default)
+
         with c1:
             L = st.number_input(
                 f"Largura camada {i+1}",
-                min_value=1e-12, value=1.00, step=0.01, format="%.2f", key=f"L{i}"
+                min_value=1e-12,
+                value=float(st.session_state[key_L]),
+                step=0.01, format="%.2f",
+                key=key_L
             )
         with c2:
-            # se quiser retirar esses defaults fixos, me avise que troco para padrões editáveis via session_state
-            n_default = 3.55 if (i == 0 or i == n_camadas - 1) else 3.60
-            n = st.number_input(
+            n_val = st.number_input(
                 f"n camada {i+1}",
-                min_value=1e-12, value=float(n_default), step=0.01, format="%.2f", key=f"n{i}"
+                min_value=1e-12,
+                value=float(st.session_state[key_n]),
+                step=0.01, format="%.2f",
+                key=key_n
             )
-        larguras.append(L); indices_n.append(n)
+        larguras.append(L)
+        indices_n.append(n_val)
 
     Np   = st.number_input("Np (nº de pontos, ≥3)", min_value=3, value=101, step=1)
     lamb = st.number_input("λ (compr. de onda)", min_value=1e-12, value=1.00, step=0.01, format="%.2f")
+
     montar = st.button("Montar A e B", use_container_width=True)
 
-# ======= DESCRIÇÃO + PSEUDOCÓDIGO =======
-st.info("Ajuste os parâmetros na barra lateral e clique **Montar A e B**.")
-
+# ======= DESCRIÇÃO + PSEUDOCÓDIGO (compacto) =======
 st.markdown("""
 <div class="note-small">
   <strong>Etapa 1 — Pré-processamento: montar A e B</strong>
@@ -148,7 +179,6 @@ Checks: A.shape, B.shape; A[0,0], A[0,1], A[1,0], A[mid,mid]; B[0,0], B[-1,-1]
   </pre>
 </div>
 """, unsafe_allow_html=True)
-
 
 # ======= LÓGICA =======
 def montar_AB(larguras, indices_n, Np, lamb):
@@ -213,8 +243,3 @@ if montar:
 
     except Exception as e:
         st.error(f"Erro ao montar as matrizes: {e}")
-
-
-
-
-
