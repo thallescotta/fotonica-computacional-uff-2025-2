@@ -156,8 +156,7 @@ with st.sidebar:
 
 # ======= DESCRIÇÃO + PSEUDOCÓDIGO =======
 st.markdown(
-    "#### Etapa 1: montar A e B "
-    </p>
+    "#### Etapa 1: montar A e B  \n"
     "(O objetivo é construir as matrizes A e B para o guia planar com camadas arbitrárias, "
     "e o sistema deve permitir a configuração de camadas e parâmetros de entrada)."
 )
@@ -270,4 +269,5 @@ if montar:
 
     except Exception as e:
         st.error(f"Erro ao montar as matrizes: {e}")
+
 
