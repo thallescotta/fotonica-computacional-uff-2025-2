@@ -10,14 +10,12 @@ st.set_page_config(page_title="Matrizes A e B (Guia Planar)", layout="centered")
 st.markdown(
     """
     <style>
-      /* fundo claro */
+      /* fundo claro e tipografia */
       .stApp { background: #ffffff; color: #0f172a; }
+      h1, h2, h3 { line-height: 1.2; }
 
       /* sidebar com leve contraste */
       section[data-testid="stSidebar"] { background: #f8fafc; border-right: 1px solid #e5e7eb; }
-
-      /* tipografia mais agradável nos títulos */
-      h1, h2, h3 { line-height: 1.2; }
 
       /* cartão para inputs na sidebar */
       .param-card {
@@ -43,7 +41,7 @@ st.markdown(
           border-color: #1e3a8a;
       }
 
-      /* inputs com borda mais definida */
+      /* inputs com borda melhor */
       div[data-baseweb="input"] > div {
           border-radius: 10px;
           border: 1px solid #cbd5e1;
@@ -52,13 +50,19 @@ st.markdown(
           border-color: #2563eb;
           box-shadow: 0 0 0 1px #2563eb inset;
       }
+
+      /* dataframes/expanders mais suaves */
+      .stDataFrame, .st-expander {
+          border-radius: 12px !important;
+          border: 1px solid #e5e7eb;
+      }
     </style>
     """,
     unsafe_allow_html=True,
 )
 
 # ======= CAPA (logo + seus dados) =======
-# Use o link RAW do GitHub para carregar a imagem no Streamlit
+# use o link RAW do GitHub para carregar a imagem no Streamlit
 LOGO_URL = "https://raw.githubusercontent.com/thallescotta/logo-ppgio-vetorizado/main/SVG-PPGIO_invert_preto_para_branco.png"
 
 st.markdown(
@@ -81,16 +85,62 @@ st.markdown(
     unsafe_allow_html=True,
 )
 
+# ======= DESCRIÇÃO ILUSTRATIVA DA ATIVIDADE (1ª etapa) =======
+st.info(
+    """
+**Atividade desta etapa (pré-processamento):**
+
+- **Objetivo**: montar **somente** as matrizes **A** e **B** de um guia planar com **n** camadas.
+- **Entradas**: número de camadas, **largura[i]**, **n[i]**, **Np** (pontos), **λ** (mesmas unidades das larguras).
+- **Cálculos**: \(L_{total}\), \(\Delta x = L_{total}/(Np-1)\), \(k_0=2\pi/\\lambda\), perfil \(n(x)\).
+- **Saída**:  
+  \\(A = \\tfrac{D_2}{\\Delta x^2} + k_0^2 \\operatorname{diag}(n(x)^2)\\),  
+  \\(B = k_0^2 I\\).
+- **Como conferir**: veja *Resumo/Checks* e compare elementos típicos (ex.: \(A[0,0]\), \(A[0,1]\), \(A[mid,mid]\), \(B[0,0]\)).
+""",
+    icon="🧭",
+)
+
+# ======= PSEUDOCÓDIGO (fixo, em caixa azul, pronto pra copiar) =======
+st.info(
+    """
+**Pseudocódigo (etapa 1 — A e B)**
+
+Ler: n_camadas; largura[i]; n[i]; Np; λ
+
+L_total = sum(largura); Δx = L_total/(Np-1); k0 = 2π/λ
+
+x = linspace(0, L_total, Np)
+
+limites = [0, cumsum(largura)]
+para cada x_j:
+achar camada c tal que limites[c-1] ≤ x_j < limites[c]
+n_x[j] = n[c]
+
+D2 = tridiag(1, -2, 1) / Δx²
+
+Diag_n2 = diag(n_x²)
+
+A = D2 + k0² * Diag_n2
+B = k0² * I
+
+Checks: shapes, A[0,0], A[0,1], A[1,0], A[mid,mid], B[0,0], B[-1,-1]
+
+
+""",
+    icon="📋",
+)
+
 # ======= SIDEBAR — PARÂMETROS EM DESTAQUE (2 casas decimais + padrões editáveis) =======
 with st.sidebar:
-    st.markdown("### ⚙️ Parâmetros (Etapa 1)")
-    st.info("Preencha e clique **Montar A e B**.", icon="🧩")
+    st.markdown("### ⚙️ Parâmetros")
+    st.info("Preencha os campos e clique **Montar A e B**.", icon="🧩")
 
     st.markdown('<div class="param-card">', unsafe_allow_html=True)
 
     n_camadas = st.number_input("Número de camadas (≥2)", min_value=2, value=3, step=1)
 
-    # Padrões globais (não fixa nada no código; o usuário decide)
+    # Padrões globais (o usuário decide; não fixa valores no código)
     L_default = st.number_input(
         "Largura padrão (para novas camadas)", min_value=1e-12, value=1.00, step=0.01, format="%.2f"
     )
@@ -98,7 +148,7 @@ with st.sidebar:
         "n padrão (para novas camadas)", min_value=1e-12, value=1.00, step=0.01, format="%.2f"
     )
 
-    st.markdown("**Largura e índice n por camada** (mesmas unidades que λ).")
+    st.markdown("**Informe largura e índice n para cada camada** (mesmas unidades que λ).")
 
     larguras, indices_n = [], []
     for i in range(n_camadas):
@@ -136,24 +186,6 @@ with st.sidebar:
 
     montar = st.button("🚀 Montar A e B", use_container_width=True)
     st.markdown('</div>', unsafe_allow_html=True)
-
-# ======= BLOCO EXPLICATIVO (ilustrativo da atividade proposta) =======
-st.info(
-    """
-**Etapa 1 — Pré-processamento (o que o professor pediu):**
-
-- **Entrada**: número de camadas, larguras, índices _n_, **Np** e **λ**.  
-- **Discretização**: grade uniforme em \\([0, L_{total}]\\) com \\(\\Delta x = L_{total}/(Np-1)\\).  
-- **Perfil** \\(n(x)\\): para cada ponto da grade, decidir em qual camada ele cai e atribuir \\(n\\).  
-- **Matrizes**:  
-  • \\(D_2/\\Delta x^2\\) (tridiagonal com \\(-2, +1, +1\\))  
-  • \\(\\mathrm{diag}(n(x)^2)\\)  
-  • **A** = \\(D_2/\\Delta x^2 + k_0^2\\,\\mathrm{diag}(n^2)\\)  
-  • **B** = \\(k_0^2 I\\)  
-- **Saída**: apenas **checks** simples (dimensões e alguns elementos).  
-  Nada de modos, gráficos ou BPM nesta etapa.
-""",
-)
 
 # ======= LÓGICA =======
 def montar_AB(larguras, indices_n, Np, lamb):
@@ -210,6 +242,11 @@ if montar:
         })
         st.dataframe(df_checks, use_container_width=True)
 
-        # (Sem downloads, sem prévias, sem listas adicionais)
+        st.markdown("**Prévia das matrizes (10×10 do canto superior esquerdo):**")
+        def preview(M):
+            s = min(10, M.shape[0]); return pd.DataFrame(M[:s, :s])
+        with st.expander("Prévia A (10×10)"): st.dataframe(preview(A))
+        with st.expander("Prévia B (10×10)"): st.dataframe(preview(B))
+
     except Exception as e:
         st.error(f"Erro ao montar as matrizes: {e}")
