@@ -16,7 +16,7 @@ st.markdown(
 
       /* Aumenta a largura útil do conteúdo (~40% maior) */
       .main .block-container {
-        max-width: 1400px;   /* ajuste para 1600/1800 se quiser ainda maior */
+        max-width: 1400px;
         padding-top: 0.5rem;
       }
 
@@ -67,13 +67,16 @@ st.markdown(
         border-radius:12px;
         padding:10px 14px;
         font-size:12px;
-        line-height:1.25;
+        line-height:1.2;
         color:#e5e7eb;
       }
-      .note-small pre{
-        margin:6px 0 0 0;
-        white-space:pre-wrap;
-      }
+      .note-small code{ font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, "Liberation Mono", monospace; }
+      .note-small .c{ color:#22c55e; }   /* comentários verdes (# ...) */
+      .note-small .k{ color:#93c5fd; }   /* palavras-chave/classe de ênfase */
+      .note-small .v{ color:#eab308; }   /* variáveis/constantes */
+      .note-small .op{ color:#c4b5fd; }  /* operadores/símbolos */
+      .note-small .fn{ color:#facc15; }  /* “funções” */
+      .note-small pre{ margin:0; white-space:pre; }
     </style>
     """,
     unsafe_allow_html=True,
@@ -150,35 +153,34 @@ with st.sidebar:
         larguras.append(L)
         indices_n.append(n_val)
 
-    Np   = st.number_input("NP (nº de pontos, ≥3)", min_value=3, value=101, step=1)
+    Np   = st.number_input("Np (nº de pontos, ≥3)", min_value=3, value=101, step=1)
     lamb = st.number_input("λ (comprimento de onda)", min_value=1e-12, value=1.00, step=0.01, format="%.2f")
 
     montar = st.button("Montar A e B", use_container_width=True)
 
-# ======= DESCRIÇÃO + PSEUDOCÓDIGO (compacto) =======
-st.markdown("""
+# ======= DESCRIÇÃO + PSEUDOCÓDIGO (compacto, sem espaçamento, comentários verdes) =======
+st.markdown(
+    """
 <div class="note-small">
-  <strong>Etapa 1 — Pré-processamento: montar A e B</strong>
-  <pre>
-Entradas: n_camadas, largura[i], n[i], Np, λ
-
-1) L_total = sum(largura)                 # largura total
-2) Δx = L_total/(NP-1)                    # passo da malha
-3) k0 = 2π/λ                              # número de onda
-4) x = linspace(0, L_total, NP)           # grade 1D
-
-5) limites = [0] + cumsum(largura)        # fronteiras das camadas
-6) para x_j: achar c s/ limites[c-1] ≤ x_j < limites[c]; n_x[j] = n[c]
-
-7) D2 = tridiag(1,-2,1)/(Δx^2)            # 2ª derivada (FDM)
-8) Diag_n2 = diag(n_x^2)
-9) A = D2 + k0^2 * Diag_n2
-10) B = k0^2 * I
-
+<pre><code>
+<span class="k">Etapa 1 — Pré-processamento</span>: montar <span class="v">A</span> e <span class="v">B</span>
+Entradas: <span class="v">n_camadas</span>, <span class="v">largura[i]</span>, <span class="v">n[i]</span>, <span class="v">Np</span>, <span class="v">λ</span>
+1) <span class="v">L_total</span> = sum(largura)                       <span class="c"># largura total</span>
+2) <span class="v">Δx</span> = L_total/(Np-1)                        <span class="c"># passo da malha</span>
+3) <span class="v">k0</span> = 2π/λ                                  <span class="c"># número de onda</span>
+4) <span class="v">x</span> = linspace(0, L_total, Np)               <span class="c"># grade 1D</span>
+5) <span class="v">limites</span> = [0] + cumsum(largura)            <span class="c"># fronteiras das camadas</span>
+6) para <span class="v">x_j</span>: achar <span class="v">c</span> s/ limites[c-1] ≤ x_j &lt; limites[c]; <span class="v">n_x[j]</span> = n[c] <span class="c"># perfil n(x)</span>
+7) <span class="v">D2</span> = tridiag(1,-2,1)/(Δx²)                 <span class="c"># 2ª derivada (FDM)</span>
+8) <span class="v">Diag_n2</span> = diag(n_x²)                       <span class="c"># diagonal com n(x)²</span>
+9) <span class="v">A</span> = D2 + k0² * Diag_n2                     <span class="c"># matriz do problema</span>
+10) <span class="v">B</span> = k0² * I                               <span class="c"># matriz massa</span>
 Checks: A.shape, B.shape; A[0,0], A[0,1], A[1,0], A[mid,mid]; B[0,0], B[-1,-1]
-  </pre>
+</code></pre>
 </div>
-""", unsafe_allow_html=True)
+""",
+    unsafe_allow_html=True,
+)
 
 # ======= LÓGICA =======
 def montar_AB(larguras, indices_n, Np, lamb):
@@ -215,11 +217,11 @@ if montar:
     try:
         A, B, x, n_x, dx, k0, L_total = montar_AB(larguras, indices_n, Np, lamb)
 
-        st.subheader("Resumo:")
+        st.subheader("Resumo")
         c1, c2, c3 = st.columns(3)
-        c1.metric("Numero de camadas", len(larguras))
-        c2.metric("NP", Np)
-        c3.metric("Largura total", f"{L_total:.6g}")
+        c1.metric("Número de camadas", len(larguras))
+        c2.metric("Np", Np)
+        c3.metric("Largura total (L_total)", f"{L_total:.6g}")
 
         c4, c5, c6 = st.columns(3)
         c4.metric("Δx", f"{dx:.6g}")
@@ -235,13 +237,21 @@ if montar:
         })
         st.dataframe(df_checks, use_container_width=True)
 
-        st.markdown("**Prévia das matrizes (10×10 do canto superior esquerdo):**")
-        def preview(M):
-            s = min(10, M.shape[0]); return pd.DataFrame(M[:s, :s])
-        with st.expander("Prévia A (10×10)"): st.dataframe(preview(A))
-        with st.expander("Prévia B (10×10)"): st.dataframe(preview(B))
+        # ---- Pré-visualizações com detalhes de eixos (i/j e x correspondente) ----
+        def preview_matrix(M, x, s=10):
+            s = min(s, M.shape[0])
+            cols = [f"j={j} (x={x[j]:.6g})" for j in range(s)]
+            idx  = [f"i={i} (x={x[i]:.6g})" for i in range(s)]
+            return pd.DataFrame(M[:s, :s], columns=cols, index=idx)
+
+        s = min(10, Np)
+        st.markdown(f"**Matriz A — submatriz [0:{s}, 0:{s}] (linhas/colunas i,j; x_i = i·Δx)**")
+        with st.expander("Ver A (canto superior)"):
+            st.dataframe(preview_matrix(A, x, s=s), use_container_width=True)
+
+        st.markdown(f"**Matriz B — submatriz [0:{s}, 0:{s}] (linhas/colunas i,j; x_i = i·Δx)**")
+        with st.expander("Ver B (canto superior)"):
+            st.dataframe(preview_matrix(B, x, s=s), use_container_width=True)
 
     except Exception as e:
         st.error(f"Erro ao montar as matrizes: {e}")
-
-
