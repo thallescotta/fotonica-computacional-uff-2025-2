@@ -103,19 +103,12 @@ st.markdown(
     unsafe_allow_html=True,
 )
 
-# ======= SIDEBAR (Parâmetros com padrões editáveis e persistência) =======
+# ======= SIDEBAR (Parâmetros mínimos que o professor pediu) =======
 with st.sidebar:
     st.header("Parâmetros")
 
+    # nº de camadas
     n_camadas = st.number_input("Número de camadas (≥2)", min_value=2, value=3, step=1)
-
-    # Padrões globais (o usuário define; não há valores fixos no código)
-    L_default = st.number_input(
-        "Largura padrão (para novas camadas)", min_value=1e-12, value=1.00, step=0.01, format="%.2f"
-    )
-    n_default = st.number_input(
-        "n padrão (para novas camadas)", min_value=1e-12, value=1.00, step=0.01, format="%.2f"
-    )  # OBS: valores típicos usados pelo professor foram 3.55 (bordas) e 3.60 (núcleo); aqui são entradas ajustáveis pelo usuário.
 
     st.markdown("**Informe largura e índice n para cada camada** (mesmas unidades que λ).")
 
@@ -124,16 +117,17 @@ with st.sidebar:
         c1, c2 = st.columns(2)
         key_L = f"L{i}"
         key_n = f"n{i}"
-        # Inicializa com os padrões apenas na 1ª vez; depois mantém o que o usuário editou
-        if key_L not in st.session_state:
-            st.session_state[key_L] = float(L_default)
+
+        # Pré-preenche n com o exemplo do professor quando n_camadas == 3 (3.55 | 3.60 | 3.55).
+        # Para outras quantidades, bordas 3.55 e interior 3.60 — tudo é editável pelo usuário.
         if key_n not in st.session_state:
-            # Defaults do professor (3 camadas): 3.55 | 3.60 | 3.55
             if n_camadas == 3:
                 st.session_state[key_n] = float(3.55 if (i == 0 or i == 2) else 3.60)
             else:
-                # Para outros casos, bordas 3.55, interior usa n_default (editável)
-                st.session_state[key_n] = float(3.55 if (i == 0 or i == n_camadas - 1) else n_default)
+                st.session_state[key_n] = float(3.55 if (i == 0 or i == n_camadas - 1) else 3.60)
+
+        if key_L not in st.session_state:
+            st.session_state[key_L] = 1.00  # largura inicial padrão (editável)
 
         with c1:
             L = st.number_input(
@@ -154,13 +148,18 @@ with st.sidebar:
         larguras.append(L)
         indices_n.append(n_val)
 
+    # Discretização e comprimento de onda
     Np   = st.number_input("Np (nº de pontos, ≥3)", min_value=3, value=101, step=1)
     lamb = st.number_input("λ (comprimento de onda)", min_value=1e-12, value=1.00, step=0.01, format="%.2f")
 
     montar = st.button("Montar A e B", use_container_width=True)
 
-# ======= DESCRIÇÃO + PSEUDOCÓDIGO (compacto, com comentários verdes) =======
-st.markdown("#### Etapa 1: montar A e B (passo a passo)")
+# ======= DESCRIÇÃO + PSEUDOCÓDIGO =======
+st.markdown(
+    "#### Etapa 1 — Pré-processamento: montar A e B "
+    "(O objetivo é construir as matrizes A e B para o guia planar com camadas arbitrárias, "
+    "e o sistema deve permitir a configuração de camadas e parâmetros de entrada)."
+)
 
 pseudo = """\
 # Entradas do usuário:
