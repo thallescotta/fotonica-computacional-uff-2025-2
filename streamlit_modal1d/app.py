@@ -152,7 +152,7 @@ with st.sidebar:
     Np   = st.number_input("Np (nº de pontos, ≥3)", min_value=3, value=101, step=1)
     lamb = st.number_input("λ (comprimento de onda)", min_value=1e-12, value=1.00, step=0.01, format="%.2f")
 
-    montar = st.button("Montar A e B", use_container_width=True)
+    montar = st.button("Montar Matrizes A e B", use_container_width=True)
 
 # ======= DESCRIÇÃO + PSEUDOCÓDIGO =======
 st.markdown(
@@ -269,6 +269,7 @@ if montar:
 
     except Exception as e:
         st.error(f"Erro ao montar as matrizes: {e}")
+
 
 
 
