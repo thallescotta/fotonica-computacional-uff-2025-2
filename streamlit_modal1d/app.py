@@ -115,7 +115,7 @@ with st.sidebar:
     )
     n_default = st.number_input(
         "n padrão (para novas camadas)", min_value=1e-12, value=1.00, step=0.01, format="%.2f"
-    )  # OBS: valores típicos anteriormente usados eram 3.55 (borda) e 3.60 (núcleo); aqui são entradas do usuário e totalmente ajustáveis.
+    )  # OBS: valores típicos usados pelo professor foram 3.55 (bordas) e 3.60 (núcleo); aqui são entradas ajustáveis pelo usuário.
 
     st.markdown("**Informe largura e índice n para cada camada** (mesmas unidades que λ).")
 
@@ -128,7 +128,12 @@ with st.sidebar:
         if key_L not in st.session_state:
             st.session_state[key_L] = float(L_default)
         if key_n not in st.session_state:
-            st.session_state[key_n] = float(n_default)
+            # Defaults do professor (3 camadas): 3.55 | 3.60 | 3.55
+            if n_camadas == 3:
+                st.session_state[key_n] = float(3.55 if (i == 0 or i == 2) else 3.60)
+            else:
+                # Para outros casos, bordas 3.55, interior usa n_default (editável)
+                st.session_state[key_n] = float(3.55 if (i == 0 or i == n_camadas - 1) else n_default)
 
         with c1:
             L = st.number_input(
@@ -155,11 +160,17 @@ with st.sidebar:
     montar = st.button("Montar A e B", use_container_width=True)
 
 # ======= DESCRIÇÃO + PSEUDOCÓDIGO (compacto, com comentários verdes) =======
-st.markdown("#### Etapa 1 — Pré-processamento: montar A e B (passo a passo)")
+st.markdown("#### Etapa 1: montar A e B (passo a passo)")
 
 pseudo = """\
 # Entradas do usuário:
-# n_camadas, largura[i], n[i], Np, λ
+# n_camadas  -> número de camadas do guia
+# largura[i] -> largura da i-ésima camada (mesmas unidades de λ)
+# n[i]       -> índice de refração da i-ésima camada
+# Np         -> número de pontos da discretização (≥3)
+# λ (lambda) -> comprimento de onda
+# i, j       -> índices da malha (0..Np-1) para linhas/colunas das matrizes
+# x_i, x_j   -> posições espaciais correspondentes (x_i = i·Δx, x_j = j·Δx)
 
 L_total = sum(largura)             # largura total do guia
 Δx      = L_total/(Np-1)           # passo da malha 1D
