@@ -4,11 +4,9 @@ import numpy as np
 import pandas as pd
 import streamlit as st
 
-# --- layout wide para aumentar ~40% a largura útil do conteúdo ---
 st.set_page_config(page_title="Matrizes A e B (Guia Planar)", layout="wide")
 
 # ======= ESTILO (fundo branco e área principal mais larga) =======
-# 👉 troque APENAS o trecho da sidebar no seu CSS por este:
 
 st.markdown(
     """
@@ -62,21 +60,38 @@ LOGO_URL = "https://raw.githubusercontent.com/thallescotta/logo-ppgio-vetorizado
 st.markdown(
     f"""
     <div style="display:flex; gap:24px; align-items:center; margin:10px 0 12px 0;">
-      <img src="{LOGO_URL}" alt="Logo PPGIO" style="width:240px; max-width:40vw;" />
+      <img src="{LOGO_URL}" alt="Logo PPGIO" style="width:480px; max-width:40vw;" />
       <div>
         <h1 style="margin:0;">Matrizes A e B - Guia Planar</h1>
         <p style="margin:6px 0 0 0; opacity:.9;">
-          <strong>Thalles Cotta Fontainha</strong> - <strong>PPGIO Matrícula:</strong> 2410091DIOAMA
+          <strong>Thalles Cotta Fontainha</strong>, <strong>PPGIO Matrícula:</strong> 2410091DIOAMA
         </p>
         <p style="margin:0; opacity:.9;">
-          <em>"Fotonica Analise Modal e BPM V2.pdf"</em> recebido em 11/09/2025 •
+          <em>"Fotonica Analise Modal e BPM V2.pdf"</em> recebido em 11/09/2025
         </p>
-          <strong>Disciplina:</strong> Fotônica Computacional (TCE11209 — UFF) •
+          <strong>Disciplina:</strong> Fotônica Computacional (TCE11209 - UFF)
         </p>
           <strong>Professor:</strong> Andres Pablo Lopez Barbero
         </p>
       </div>
     </div>
+
+    <style>
+  .note-small{
+    background:#0f1a2b;              /* azul escuro da sua UI */
+    border:1px solid #1f2937;
+    border-radius:12px;
+    padding:10px 14px;
+    font-size:12px;                   /* menor */
+    line-height:1.25;                 /* compacto */
+    color:#e5e7eb;
+  }
+  .note-small pre{
+    margin:6px 0 0 0;
+    white-space:pre-wrap;             /* quebra se precisar */
+  }
+</style>
+
     """,
     unsafe_allow_html=True,
 )
@@ -110,36 +125,30 @@ with st.sidebar:
 # ======= DESCRIÇÃO + PSEUDOCÓDIGO =======
 st.info("Ajuste os parâmetros na barra lateral e clique **Montar A e B**.")
 
-st.info(
-    """
-### Etapa 1: montar matriz **A** e **B**
+st.markdown("""
+<div class="note-small">
+  <strong>Etapa 1 — Pré-processamento: montar A e B</strong>
+  <pre>
+Entradas: n_camadas, largura[i], n[i], Np, λ
 
-**Entradas**
-- `n_camadas`, `largura[i]`, `n[i]`, `Np`, `λ` (mesmas unidades de `largura`)
+1) L_total = sum(largura)                 # largura total
+2) Δx = L_total/(Np-1)                    # passo da malha
+3) k0 = 2π/λ                              # número de onda
+4) x = linspace(0, L_total, Np)           # grade 1D
 
-**Cálculos**
-- `L_total = sum(largura)`
-- `Δx = L_total/(Np-1)`
-- `k0 = 2π/λ`
-- `x = linspace(0, L_total, Np)`
+5) limites = [0] + cumsum(largura)        # fronteiras das camadas
+6) para x_j: achar c s/ limites[c-1] ≤ x_j < limites[c]; n_x[j] = n[c]
 
-**Perfil `n(x)`**
-- `limites = [0, cumsum(largura)]`
-- para cada ponto `x_j`:
-  - encontre a camada `c` tal que `limites[c-1] ≤ x_j < limites[c]`
-  - defina `n_x[j] = n[c]`
+7) D2 = tridiag(1,-2,1)/(Δx^2)            # 2ª derivada (FDM)
+8) Diag_n2 = diag(n_x^2)
+9) A = D2 + k0^2 * Diag_n2
+10) B = k0^2 * I
 
-**Operadores / Matrizes**
-- `D2 = tridiag(1, -2, 1) / Δx²`
-- `Diag_n2 = diag(n_x²)`
-- `A = D2 + k0² * Diag_n2`
-- `B = k0² * I`
+Checks: A.shape, B.shape; A[0,0], A[0,1], A[1,0], A[mid,mid]; B[0,0], B[-1,-1]
+  </pre>
+</div>
+""", unsafe_allow_html=True)
 
-**Checks para conferência**
-- `A.shape`, `B.shape`
-- `A[0,0]`, `A[0,1]`, `A[1,0]`, `A[mid,mid]`, `B[0,0]`, `B[-1,-1]`
-    """
-)
 
 # ======= LÓGICA =======
 def montar_AB(larguras, indices_n, Np, lamb):
@@ -204,6 +213,7 @@ if montar:
 
     except Exception as e:
         st.error(f"Erro ao montar as matrizes: {e}")
+
 
 
 
