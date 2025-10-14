@@ -3,22 +3,68 @@ import math
 import numpy as np
 import pandas as pd
 import streamlit as st
-from io import BytesIO
 
-st.set_page_config(page_title="Matrizes A e B (Guia Planar)", layout="centered")
+# --- layout wide para aumentar ~40% a largura útil do conteúdo ---
+st.set_page_config(page_title="Matrizes A e B (Guia Planar)", layout="wide")
+
+# ======= ESTILO (fundo branco e área principal mais larga) =======
+st.markdown(
+    """
+    <style>
+      .stApp { background: #ffffff; color: #0f172a; }
+      h1, h2, h3 { line-height: 1.2; }
+
+      /* aumenta a largura máxima do container principal (~40% maior que o padrão) */
+      .main .block-container {
+        max-width: 1400px;   /* antes ~1000px */
+        padding-top: 0.5rem;
+      }
+
+      /* sidebar com leve contraste */
+      section[data-testid="stSidebar"] { background: #f8fafc; border-right: 1px solid #e5e7eb; }
+
+      /* cartões e boxes mais suaves */
+      .stAlert, .stDataFrame, .st-expander {
+        border-radius: 12px !important;
+        border: 1px solid #e5e7eb;
+      }
+
+      /* botões visíveis no tema claro */
+      .stButton > button {
+          background: #2563eb;
+          color: #ffffff;
+          border: 1px solid #1e40af;
+          border-radius: 10px;
+          padding: 0.6rem 1rem;
+          font-weight: 700;
+          box-shadow: 0 4px 14px rgba(37,99,235,0.25);
+      }
+      .stButton > button:hover { background: #1d4ed8; border-color: #1e3a8a; }
+
+      /* inputs com borda melhor */
+      div[data-baseweb="input"] > div {
+          border-radius: 10px;
+          border: 1px solid #cbd5e1;
+      }
+      div[data-baseweb="input"] > div:focus-within {
+          border-color: #2563eb;
+          box-shadow: 0 0 0 1px #2563eb inset;
+      }
+    </style>
+    """,
+    unsafe_allow_html=True,
+)
 
 # ======= CAPA (logo + seus dados) =======
-# use o link RAW do GitHub para carregar a imagem no Streamlit
 LOGO_URL = "https://raw.githubusercontent.com/thallescotta/logo-ppgio-vetorizado/main/SVG-PPGIO_invert_preto_para_branco.png"
-
 
 st.markdown(
     f"""
-    <div style="display:flex; gap:24px; align-items:center; margin:10px 0 6px 0;">
+    <div style="display:flex; gap:24px; align-items:center; margin:10px 0 12px 0;">
       <img src="{LOGO_URL}" alt="Logo PPGIO" style="width:240px; max-width:40vw;" />
       <div>
         <h1 style="margin:0;">Matrizes A e B — Guia Planar (Pré-processamento)</h1>
-        <p style="margin:4px 0 0 0; opacity:.9;">
+        <p style="margin:6px 0 0 0; opacity:.9;">
           <strong>Thalles Cotta Fontainha</strong> — <strong>PPGIO Matrícula:</strong> 2410091DIOAMA
         </p>
         <p style="margin:0; opacity:.9;">
@@ -32,7 +78,7 @@ st.markdown(
     unsafe_allow_html=True,
 )
 
-# ======= SIDEBAR (2 casas decimais) =======
+# ======= SIDEBAR (Parâmetros) =======
 with st.sidebar:
     st.header("Parâmetros")
     n_camadas = st.number_input("Número de camadas (≥2)", min_value=2, value=3, step=1)
@@ -46,6 +92,7 @@ with st.sidebar:
                 min_value=1e-12, value=1.00, step=0.01, format="%.2f", key=f"L{i}"
             )
         with c2:
+            # se quiser retirar esses defaults fixos, me avise que troco para padrões editáveis via session_state
             n_default = 3.55 if (i == 0 or i == n_camadas - 1) else 3.60
             n = st.number_input(
                 f"n camada {i+1}",
@@ -55,9 +102,9 @@ with st.sidebar:
 
     Np   = st.number_input("Np (nº de pontos, ≥3)", min_value=3, value=101, step=1)
     lamb = st.number_input("λ (compr. de onda)", min_value=1e-12, value=1.00, step=0.01, format="%.2f")
-    montar = st.button("Montar A e B")
+    montar = st.button("Montar A e B", use_container_width=True)
 
-# ======= AVISO + PSEUDOCÓDIGO =======
+# ======= DESCRIÇÃO + PSEUDOCÓDIGO =======
 st.info("Ajuste os parâmetros na barra lateral e clique **Montar A e B**.")
 
 st.info(
@@ -90,7 +137,6 @@ st.info(
 - `A[0,0]`, `A[0,1]`, `A[1,0]`, `A[mid,mid]`, `B[0,0]`, `B[-1,-1]`
     """
 )
-
 
 # ======= LÓGICA =======
 def montar_AB(larguras, indices_n, Np, lamb):
@@ -153,15 +199,5 @@ if montar:
         with st.expander("Prévia A (10×10)"): st.dataframe(preview(A))
         with st.expander("Prévia B (10×10)"): st.dataframe(preview(B))
 
-        # Downloads (.npy)
-        bA, bB = BytesIO(), BytesIO()
-        np.save(bA, A); bA.seek(0)
-        np.save(bB, B); bB.seek(0)
-        st.download_button("Baixar A (npy)", data=bA, file_name="A.npy")
-        st.download_button("Baixar B (npy)", data=bB, file_name="B.npy")
-
-        st.markdown("**Primeiros 12 valores de n(x)²:**")
-        st.write(np.round((n_x[:12])**2, 6))
     except Exception as e:
         st.error(f"Erro ao montar as matrizes: {e}")
-
