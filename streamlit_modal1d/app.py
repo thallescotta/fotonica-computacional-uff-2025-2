@@ -60,23 +60,19 @@ st.markdown(
         border: 1px solid #1f2937;
       }
 
-      /* Nota compacta (pseudocódigo) */
-      .note-small{
+      /* Bloco de código (pseudocódigo) compacto */
+      div.stCode{
         background:#0f1a2b;
         border:1px solid #1f2937;
         border-radius:12px;
-        padding:10px 14px;
+        padding:8px 10px;
+      }
+      div.stCode pre{ margin:0; }
+      div.stCode code{
         font-size:12px;
         line-height:1.2;
         color:#e5e7eb;
       }
-      .note-small code{ font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, "Liberation Mono", monospace; }
-      .note-small .c{ color:#22c55e; }   /* comentários verdes (# ...) */
-      .note-small .k{ color:#93c5fd; }   /* palavras-chave/classe de ênfase */
-      .note-small .v{ color:#eab308; }   /* variáveis/constantes */
-      .note-small .op{ color:#c4b5fd; }  /* operadores/símbolos */
-      .note-small .fn{ color:#facc15; }  /* “funções” */
-      .note-small pre{ margin:0; white-space:pre; }
     </style>
     """,
     unsafe_allow_html=True,
@@ -158,29 +154,35 @@ with st.sidebar:
 
     montar = st.button("Montar A e B", use_container_width=True)
 
-# ======= DESCRIÇÃO + PSEUDOCÓDIGO (compacto, sem espaçamento, comentários verdes) =======
-st.markdown(
-    """
-<div class="note-small">
-<pre><code>
-<span class="k">Etapa 1 — Pré-processamento</span>: montar <span class="v">A</span> e <span class="v">B</span>
-Entradas: <span class="v">n_camadas</span>, <span class="v">largura[i]</span>, <span class="v">n[i]</span>, <span class="v">Np</span>, <span class="v">λ</span>
-1) <span class="v">L_total</span> = sum(largura)                       <span class="c"># largura total</span>
-2) <span class="v">Δx</span> = L_total/(Np-1)                        <span class="c"># passo da malha</span>
-3) <span class="v">k0</span> = 2π/λ                                  <span class="c"># número de onda</span>
-4) <span class="v">x</span> = linspace(0, L_total, Np)               <span class="c"># grade 1D</span>
-5) <span class="v">limites</span> = [0] + cumsum(largura)            <span class="c"># fronteiras das camadas</span>
-6) para <span class="v">x_j</span>: achar <span class="v">c</span> s/ limites[c-1] ≤ x_j &lt; limites[c]; <span class="v">n_x[j]</span> = n[c] <span class="c"># perfil n(x)</span>
-7) <span class="v">D2</span> = tridiag(1,-2,1)/(Δx²)                 <span class="c"># 2ª derivada (FDM)</span>
-8) <span class="v">Diag_n2</span> = diag(n_x²)                       <span class="c"># diagonal com n(x)²</span>
-9) <span class="v">A</span> = D2 + k0² * Diag_n2                     <span class="c"># matriz do problema</span>
-10) <span class="v">B</span> = k0² * I                               <span class="c"># matriz massa</span>
-Checks: A.shape, B.shape; A[0,0], A[0,1], A[1,0], A[mid,mid]; B[0,0], B[-1,-1]
-</code></pre>
-</div>
-""",
-    unsafe_allow_html=True,
-)
+# ======= DESCRIÇÃO + PSEUDOCÓDIGO (compacto, com comentários verdes) =======
+st.markdown("#### Etapa 1 — Pré-processamento: montar A e B (passo a passo)")
+
+pseudo = """\
+# Entradas do usuário:
+# n_camadas, largura[i], n[i], Np, λ
+
+L_total = sum(largura)             # largura total do guia
+Δx      = L_total/(Np-1)           # passo da malha 1D
+k0      = 2*π/λ                    # número de onda no vácuo
+x       = linspace(0, L_total, Np) # grade uniforme
+
+# Perfil n(x):
+limites = [0] + cumsum(largura)    # fronteiras acumuladas das camadas
+for cada x_j em x:                 # j = 0..Np-1
+    encontre c tal que limites[c-1] ≤ x_j < limites[c]
+    n_x[j] = n[c]                  # índice de refração da camada c
+
+# Matrizes:
+D2      = tridiag(1, -2, 1)/(Δx**2) # operador de 2ª derivada (FDM)
+Diag_n2 = diag(n_x**2)              # diagonal com n(x)^2
+A       = D2 + (k0**2)*Diag_n2      # matriz do problema generalizado
+B       = (k0**2)*I                 # matriz massa (diagonal)
+
+# Checks para conferência no papel:
+# A.shape, B.shape
+# A[0,0], A[0,1], A[1,0], A[mid,mid], B[0,0], B[-1,-1]
+"""
+st.code(pseudo, language="python")
 
 # ======= LÓGICA =======
 def montar_AB(larguras, indices_n, Np, lamb):
@@ -221,7 +223,7 @@ if montar:
         c1, c2, c3 = st.columns(3)
         c1.metric("Número de camadas", len(larguras))
         c2.metric("Np", Np)
-        c3.metric("Largura total (L_total)", f"{L_total:.6g}")
+        c3.metric("L_total (largura total)", f"{L_total:.6g}")
 
         c4, c5, c6 = st.columns(3)
         c4.metric("Δx", f"{dx:.6g}")
@@ -240,17 +242,19 @@ if montar:
         # ---- Pré-visualizações com detalhes de eixos (i/j e x correspondente) ----
         def preview_matrix(M, x, s=10):
             s = min(s, M.shape[0])
-            cols = [f"j={j} (x={x[j]:.6g})" for j in range(s)]
-            idx  = [f"i={i} (x={x[i]:.6g})" for i in range(s)]
+            cols = [f"j={j}  |  x_j={x[j]:.6g}" for j in range(s)]
+            idx  = [f"i={i}  |  x_i={x[i]:.6g}" for i in range(s)]
             return pd.DataFrame(M[:s, :s], columns=cols, index=idx)
 
         s = min(10, Np)
-        st.markdown(f"**Matriz A — submatriz [0:{s}, 0:{s}] (linhas/colunas i,j; x_i = i·Δx)**")
-        with st.expander("Ver A (canto superior)"):
+        st.markdown("**Legenda das pré-vias:** linhas = `i` (x_i = i·Δx), colunas = `j` (x_j = j·Δx).")
+
+        st.markdown(f"**Matriz A — submatriz [0:{s}, 0:{s}] (canto superior esquerdo)**")
+        with st.expander("Mostrar A (0…s-1, 0…s-1)"):
             st.dataframe(preview_matrix(A, x, s=s), use_container_width=True)
 
-        st.markdown(f"**Matriz B — submatriz [0:{s}, 0:{s}] (linhas/colunas i,j; x_i = i·Δx)**")
-        with st.expander("Ver B (canto superior)"):
+        st.markdown(f"**Matriz B — submatriz [0:{s}, 0:{s}] (canto superior esquerdo)**")
+        with st.expander("Mostrar B (0…s-1, 0…s-1)"):
             st.dataframe(preview_matrix(B, x, s=s), use_container_width=True)
 
     except Exception as e:
