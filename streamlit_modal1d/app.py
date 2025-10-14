@@ -115,7 +115,7 @@ with st.sidebar:
     )
     n_default = st.number_input(
         "n padrão (para novas camadas)", min_value=1e-12, value=1.00, step=0.01, format="%.2f"
-    )
+    )  # OBS: valores típicos anteriormente usados eram 3.55 (borda) e 3.60 (núcleo); aqui são entradas do usuário e totalmente ajustáveis.
 
     st.markdown("**Informe largura e índice n para cada camada** (mesmas unidades que λ).")
 
