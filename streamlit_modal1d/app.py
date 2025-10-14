@@ -85,7 +85,7 @@ LOGO_URL = "https://raw.githubusercontent.com/thallescotta/logo-ppgio-vetorizado
 st.markdown(
     f"""
     <div style="display:flex; gap:24px; align-items:center; margin:10px 0 12px 0;">
-      <img src="{LOGO_URL}" alt="Logo PPGIO" style="width:360px; max-width:40vw;" />
+      <img src="{LOGO_URL}" alt="Logo PPGIO" style="width:320px; max-width:40vw;" />
       <div>
         <h1 style="margin:0;">Matrizes A e B - Guia Planar</h1>
         <p style="margin:6px 0 0 0; opacity:.9;">
@@ -150,8 +150,8 @@ with st.sidebar:
         larguras.append(L)
         indices_n.append(n_val)
 
-    Np   = st.number_input("Np (nº de pontos, ≥3)", min_value=3, value=101, step=1)
-    lamb = st.number_input("λ (compr. de onda)", min_value=1e-12, value=1.00, step=0.01, format="%.2f")
+    Np   = st.number_input("NP (nº de pontos, ≥3)", min_value=3, value=101, step=1)
+    lamb = st.number_input("λ (comprimento de onda)", min_value=1e-12, value=1.00, step=0.01, format="%.2f")
 
     montar = st.button("Montar A e B", use_container_width=True)
 
@@ -243,4 +243,5 @@ if montar:
 
     except Exception as e:
         st.error(f"Erro ao montar as matrizes: {e}")
+
 
