@@ -3,21 +3,46 @@ import math
 import numpy as np
 import pandas as pd
 import streamlit as st
-from io import BytesIO
 
 st.set_page_config(page_title="Matrizes A e B (Guia Planar)", layout="centered")
 
+# ======= FORÇA TEMA CLARO (fundo branco) =======
+st.markdown(
+    """
+    <style>
+      .stApp { background: #ffffff; color: #0f172a; }
+      /* leve destaque e contraste no sidebar */
+      section[data-testid="stSidebar"] { background: #f8fafc; border-right: 1px solid #e5e7eb; }
+      /* títulos mais bonitos */
+      h1, h2, h3 { line-height: 1.2; }
+      /* “cartão” da sidebar para parâmetros */
+      .param-card {
+          background: #ffffff;
+          border: 1px solid #e5e7eb;
+          border-radius: 12px;
+          padding: 12px;
+          box-shadow: 0 2px 12px rgba(0,0,0,.04);
+      }
+      .param-title {
+          font-weight: 800;
+          font-size: 1.1rem;
+          margin: 0 0 6px 0;
+      }
+    </style>
+    """,
+    unsafe_allow_html=True,
+)
+
 # ======= CAPA (logo + seus dados) =======
-# use o link RAW do GitHub para carregar a imagem no Streamlit
 LOGO_URL = "https://raw.githubusercontent.com/thallescotta/logo-ppgio-vetorizado/main/SVG-PPGIO%20(transparent).png"
 
 st.markdown(
     f"""
-    <div style="display:flex; gap:24px; align-items:center; margin:10px 0 6px 0;">
+    <div style="display:flex; gap:24px; align-items:center; margin:10px 0 12px 0;">
       <img src="{LOGO_URL}" alt="Logo PPGIO" style="width:240px; max-width:40vw;" />
       <div>
         <h1 style="margin:0;">Matrizes A e B — Guia Planar (Pré-processamento)</h1>
-        <p style="margin:4px 0 0 0; opacity:.9;">
+        <p style="margin:6px 0 0 0; opacity:.9;">
           <strong>Thalles Cotta Fontainha</strong> — <strong>PPGIO Matrícula:</strong> 2410091DIOAMA
         </p>
         <p style="margin:0; opacity:.9;">
@@ -31,11 +56,17 @@ st.markdown(
     unsafe_allow_html=True,
 )
 
-# ======= SIDEBAR (2 casas decimais) =======
+# ======= SIDEBAR — PARÂMETROS EM DESTAQUE (2 casas decimais) =======
 with st.sidebar:
-    st.header("Parâmetros")
+    st.markdown("### ⚙️ Parâmetros")        # título grande
+    st.info("Preencha os campos e clique **Montar A e B**.", icon="🧩")  # caixa de destaque
+
+    # Card visual para inputs
+    st.markdown('<div class="param-card">', unsafe_allow_html=True)
+
     n_camadas = st.number_input("Número de camadas (≥2)", min_value=2, value=3, step=1)
     st.markdown("**Informe largura e índice n para cada camada** (mesmas unidades que λ).")
+
     larguras, indices_n = [], []
     for i in range(n_camadas):
         c1, c2 = st.columns(2)
@@ -54,7 +85,10 @@ with st.sidebar:
 
     Np   = st.number_input("Np (nº de pontos, ≥3)", min_value=3, value=101, step=1)
     lamb = st.number_input("λ (compr. de onda)", min_value=1e-12, value=1.00, step=0.01, format="%.2f")
-    montar = st.button("Montar A e B")
+
+    montar = st.button("🚀 Montar A e B", use_container_width=True)
+
+    st.markdown('</div>', unsafe_allow_html=True)
 
 # ======= AVISO + PSEUDOCÓDIGO =======
 st.info("Ajuste os parâmetros na barra lateral e clique **Montar A e B**.")
@@ -81,7 +115,9 @@ Diag_n2 = diag(n_x²)
 A = D2 + k0² * Diag_n2
 B = k0² * I
 
-Imprimir checks: shapes, A[0,0], A[0,1], A[1,0], A[mid,mid], B[0,0], B[-1,-1]
+Checks: shapes, A[0,0], A[0,1], A[1,0], A[mid,mid], B[0,0], B[-1,-1]
+
+
     """
 )
 
@@ -146,14 +182,5 @@ if montar:
         with st.expander("Prévia A (10×10)"): st.dataframe(preview(A))
         with st.expander("Prévia B (10×10)"): st.dataframe(preview(B))
 
-        # Downloads (.npy)
-        bA, bB = BytesIO(), BytesIO()
-        np.save(bA, A); bA.seek(0)
-        np.save(bB, B); bB.seek(0)
-        st.download_button("Baixar A (npy)", data=bA, file_name="A.npy")
-        st.download_button("Baixar B (npy)", data=bB, file_name="B.npy")
-
-        st.markdown("**Primeiros 12 valores de n(x)²:**")
-        st.write(np.round((n_x[:12])**2, 6))
     except Exception as e:
         st.error(f"Erro ao montar as matrizes: {e}")
