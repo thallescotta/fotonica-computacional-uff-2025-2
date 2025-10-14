@@ -9,7 +9,7 @@ st.set_page_config(page_title="Matrizes A e B (Guia Planar)", layout="centered")
 
 # ======= CAPA (logo + seus dados) =======
 # use o link RAW do GitHub para carregar a imagem no Streamlit
-LOGO_URL = "https://raw.githubusercontent.com/thallescotta/logo-ppgio-vetorizado/main/SVG-PPGIO%20(transparent).png"
+LOGO_URL = "https://github.com/thallescotta/logo-ppgio-vetorizado/blob/main/SVG-PPGIO_invert_preto_para_branco.png"
 
 st.markdown(
     f"""
@@ -157,3 +157,4 @@ if montar:
         st.write(np.round((n_x[:12])**2, 6))
     except Exception as e:
         st.error(f"Erro ao montar as matrizes: {e}")
+
