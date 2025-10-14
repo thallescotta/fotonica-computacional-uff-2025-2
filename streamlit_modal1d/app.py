@@ -8,52 +8,53 @@ import streamlit as st
 st.set_page_config(page_title="Matrizes A e B (Guia Planar)", layout="wide")
 
 # ======= ESTILO (fundo branco e área principal mais larga) =======
+# 👉 troque APENAS o trecho da sidebar no seu CSS por este:
+
 st.markdown(
     """
     <style>
-      .stApp { background: #000000; color: #e5e7eb; }
-      h1, h2, h3 { line-height: 1.2; }
+      /* --- SIDEBAR: azul escuro e contraste --- */
+      section[data-testid="stSidebar"]{
+        background: #0b1220;              /* azul escuro */
+        border-right: 1px solid #0f172a;  /* linha discreta */
+      }
+      /* textos/labels da sidebar mais legíveis */
+      section[data-testid="stSidebar"] * { color: #e5e7eb !important; }
+      section[data-testid="stSidebar"] h1,
+      section[data-testid="stSidebar"] h2,
+      section[data-testid="stSidebar"] h3 { color: #e5e7eb !important; }
 
-      /* aumenta a largura máxima do container principal (~40% maior que o padrão) */
-      .main .block-container {
-        max-width: 1400px;   /* antes ~1000px */
-        padding-top: 0.5rem;
+      /* inputs dentro da sidebar com fundo azul escuro */
+      section[data-testid="stSidebar"] div[data-baseweb="input"] > div{
+        background: #111a2b !important;
+        color: #e5e7eb !important;
+        border-radius: 10px;
+        border: 1px solid #1e3a8a;       /* borda azul */
+      }
+      section[data-testid="stSidebar"] div[data-baseweb="input"] > div:focus-within{
+        border-color: #60a5fa;           /* foco azul claro */
+        box-shadow: 0 0 0 1px #60a5fa inset;
       }
 
-      /* sidebar com leve contraste */
-      section[data-testid="stSidebar"] { background: #f8fafc; border-right: 1px solid #e5e7eb; }
-
-      /* cartões e boxes mais suaves */
-      .stAlert, .stDataFrame, .st-expander {
-        border-radius: 12px !important;
-        border: 1px solid #e5e7eb;
+      /* botão na sidebar com boa visibilidade no tema escuro */
+      section[data-testid="stSidebar"] .stButton > button{
+        background: #2563eb;
+        color: #ffffff;
+        border: 1px solid #1e40af;
+        border-radius: 10px;
+        padding: 0.6rem 1rem;
+        font-weight: 700;
+        box-shadow: 0 4px 14px rgba(37,99,235,0.25);
       }
-
-      /* botões visíveis no tema claro */
-      .stButton > button {
-          background: #2563eb;
-          color: #e5e7eb;
-          border: 1px solid #1e40af;
-          border-radius: 10px;
-          padding: 0.6rem 1rem;
-          font-weight: 700;
-          box-shadow: 0 4px 14px rgba(37,99,235,0.25);
-      }
-      .stButton > button:hover { background: #1d4ed8; border-color: #1e3a8a; }
-
-      /* inputs com borda melhor */
-      div[data-baseweb="input"] > div {
-          border-radius: 10px;
-          border: 1px solid #cbd5e1;
-      }
-      div[data-baseweb="input"] > div:focus-within {
-          border-color: #2563eb;
-          box-shadow: 0 0 0 1px #2563eb inset;
+      section[data-testid="stSidebar"] .stButton > button:hover{
+        background: #1d4ed8;
+        border-color: #1e3a8a;
       }
     </style>
     """,
     unsafe_allow_html=True,
 )
+
 
 # ======= CAPA (logo + seus dados) =======
 LOGO_URL = "https://raw.githubusercontent.com/thallescotta/logo-ppgio-vetorizado/main/SVG-PPGIO_invert_preto_para_branco.png"
@@ -111,7 +112,7 @@ st.info("Ajuste os parâmetros na barra lateral e clique **Montar A e B**.")
 
 st.info(
     """
-### Etapa 1 — Pré-processamento: montar **A** e **B**
+### Etapa 1: montar matriz **A** e **B**
 
 **Entradas**
 - `n_camadas`, `largura[i]`, `n[i]`, `Np`, `λ` (mesmas unidades de `largura`)
@@ -203,6 +204,7 @@ if montar:
 
     except Exception as e:
         st.error(f"Erro ao montar as matrizes: {e}")
+
 
 
 
