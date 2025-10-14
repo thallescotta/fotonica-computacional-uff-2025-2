@@ -3,21 +3,71 @@ import math
 import numpy as np
 import pandas as pd
 import streamlit as st
-from io import BytesIO
 
 st.set_page_config(page_title="Matrizes A e B (Guia Planar)", layout="centered")
 
+# ======= TEMA CLARO + ESTILO (fundo branco e botões melhores) =======
+st.markdown(
+    """
+    <style>
+      /* fundo claro */
+      .stApp { background: #ffffff; color: #0f172a; }
+
+      /* sidebar com leve contraste */
+      section[data-testid="stSidebar"] { background: #f8fafc; border-right: 1px solid #e5e7eb; }
+
+      /* tipografia mais agradável nos títulos */
+      h1, h2, h3 { line-height: 1.2; }
+
+      /* cartão para inputs na sidebar */
+      .param-card {
+          background: #ffffff;
+          border: 1px solid #e5e7eb;
+          border-radius: 12px;
+          padding: 12px;
+          box-shadow: 0 2px 12px rgba(0,0,0,.04);
+      }
+
+      /* estiliza botões */
+      .stButton > button {
+          background: #2563eb;
+          color: #ffffff;
+          border: 1px solid #1e40af;
+          border-radius: 10px;
+          padding: 0.6rem 1rem;
+          font-weight: 700;
+          box-shadow: 0 4px 14px rgba(37,99,235,0.25);
+      }
+      .stButton > button:hover {
+          background: #1d4ed8;
+          border-color: #1e3a8a;
+      }
+
+      /* inputs com borda mais definida */
+      div[data-baseweb="input"] > div {
+          border-radius: 10px;
+          border: 1px solid #cbd5e1;
+      }
+      div[data-baseweb="input"] > div:focus-within {
+          border-color: #2563eb;
+          box-shadow: 0 0 0 1px #2563eb inset;
+      }
+    </style>
+    """,
+    unsafe_allow_html=True,
+)
+
 # ======= CAPA (logo + seus dados) =======
-# use o link RAW do GitHub para carregar a imagem no Streamlit
-LOGO_URL = "https://github.com/thallescotta/logo-ppgio-vetorizado/blob/main/SVG-PPGIO_invert_preto_para_branco.png"
+# Use o link RAW do GitHub para carregar a imagem no Streamlit
+LOGO_URL = "https://raw.githubusercontent.com/thallescotta/logo-ppgio-vetorizado/main/SVG-PPGIO_invert_preto_para_branco.png"
 
 st.markdown(
     f"""
-    <div style="display:flex; gap:24px; align-items:center; margin:10px 0 6px 0;">
+    <div style="display:flex; gap:24px; align-items:center; margin:10px 0 12px 0;">
       <img src="{LOGO_URL}" alt="Logo PPGIO" style="width:240px; max-width:40vw;" />
       <div>
         <h1 style="margin:0;">Matrizes A e B — Guia Planar (Pré-processamento)</h1>
-        <p style="margin:4px 0 0 0; opacity:.9;">
+        <p style="margin:6px 0 0 0; opacity:.9;">
           <strong>Thalles Cotta Fontainha</strong> — <strong>PPGIO Matrícula:</strong> 2410091DIOAMA
         </p>
         <p style="margin:0; opacity:.9;">
@@ -31,58 +81,78 @@ st.markdown(
     unsafe_allow_html=True,
 )
 
-# ======= SIDEBAR (2 casas decimais) =======
+# ======= SIDEBAR — PARÂMETROS EM DESTAQUE (2 casas decimais + padrões editáveis) =======
 with st.sidebar:
-    st.header("Parâmetros")
+    st.markdown("### ⚙️ Parâmetros (Etapa 1)")
+    st.info("Preencha e clique **Montar A e B**.", icon="🧩")
+
+    st.markdown('<div class="param-card">', unsafe_allow_html=True)
+
     n_camadas = st.number_input("Número de camadas (≥2)", min_value=2, value=3, step=1)
-    st.markdown("**Informe largura e índice n para cada camada** (mesmas unidades que λ).")
+
+    # Padrões globais (não fixa nada no código; o usuário decide)
+    L_default = st.number_input(
+        "Largura padrão (para novas camadas)", min_value=1e-12, value=1.00, step=0.01, format="%.2f"
+    )
+    n_default = st.number_input(
+        "n padrão (para novas camadas)", min_value=1e-12, value=1.00, step=0.01, format="%.2f"
+    )
+
+    st.markdown("**Largura e índice n por camada** (mesmas unidades que λ).")
+
     larguras, indices_n = [], []
     for i in range(n_camadas):
         c1, c2 = st.columns(2)
+
+        # usa session_state para não perder valores já digitados ao mudar n_camadas
+        key_L = f"L{i}"
+        key_n = f"n{i}"
+        if key_L not in st.session_state:
+            st.session_state[key_L] = float(L_default)
+        if key_n not in st.session_state:
+            st.session_state[key_n] = float(n_default)
+
         with c1:
             L = st.number_input(
                 f"Largura camada {i+1}",
-                min_value=1e-12, value=1.00, step=0.01, format="%.2f", key=f"L{i}"
+                min_value=1e-12,
+                value=float(st.session_state[key_L]),
+                step=0.01, format="%.2f",
+                key=key_L
             )
         with c2:
-            n_default = 3.55 if (i == 0 or i == n_camadas - 1) else 3.60
-            n = st.number_input(
+            n_val = st.number_input(
                 f"n camada {i+1}",
-                min_value=1e-12, value=float(n_default), step=0.01, format="%.2f", key=f"n{i}"
+                min_value=1e-12,
+                value=float(st.session_state[key_n]),
+                step=0.01, format="%.2f",
+                key=key_n
             )
-        larguras.append(L); indices_n.append(n)
+        larguras.append(L)
+        indices_n.append(n_val)
 
     Np   = st.number_input("Np (nº de pontos, ≥3)", min_value=3, value=101, step=1)
     lamb = st.number_input("λ (compr. de onda)", min_value=1e-12, value=1.00, step=0.01, format="%.2f")
-    montar = st.button("Montar A e B")
 
-# ======= AVISO + PSEUDOCÓDIGO =======
-st.info("Ajuste os parâmetros na barra lateral e clique **Montar A e B**.")
+    montar = st.button("🚀 Montar A e B", use_container_width=True)
+    st.markdown('</div>', unsafe_allow_html=True)
 
+# ======= BLOCO EXPLICATIVO (ilustrativo da atividade proposta) =======
 st.info(
     """
-**Pseudocódigo (etapa 1 — A e B)**
+**Etapa 1 — Pré-processamento (o que o professor pediu):**
 
-Ler: n_camadas; largura[i]; n[i]; Np; λ
-
-L_total = sum(largura); Δx = L_total/(Np-1); k0 = 2π/λ
-
-x = linspace(0, L_total, Np)
-
-limites = [0, cumsum(largura)]
-para cada x_j:
-achar camada c tal que limites[c-1] ≤ x_j < limites[c]
-n_x[j] = n[c]
-
-D2 = tridiag(1, -2, 1) / Δx²
-
-Diag_n2 = diag(n_x²)
-
-A = D2 + k0² * Diag_n2
-B = k0² * I
-
-Imprimir checks: shapes, A[0,0], A[0,1], A[1,0], A[mid,mid], B[0,0], B[-1,-1]
-    """
+- **Entrada**: número de camadas, larguras, índices _n_, **Np** e **λ**.  
+- **Discretização**: grade uniforme em \\([0, L_{total}]\\) com \\(\\Delta x = L_{total}/(Np-1)\\).  
+- **Perfil** \\(n(x)\\): para cada ponto da grade, decidir em qual camada ele cai e atribuir \\(n\\).  
+- **Matrizes**:  
+  • \\(D_2/\\Delta x^2\\) (tridiagonal com \\(-2, +1, +1\\))  
+  • \\(\\mathrm{diag}(n(x)^2)\\)  
+  • **A** = \\(D_2/\\Delta x^2 + k_0^2\\,\\mathrm{diag}(n^2)\\)  
+  • **B** = \\(k_0^2 I\\)  
+- **Saída**: apenas **checks** simples (dimensões e alguns elementos).  
+  Nada de modos, gráficos ou BPM nesta etapa.
+""",
 )
 
 # ======= LÓGICA =======
@@ -140,21 +210,6 @@ if montar:
         })
         st.dataframe(df_checks, use_container_width=True)
 
-        st.markdown("**Prévia das matrizes (10×10 do canto superior esquerdo):**")
-        def preview(M):
-            s = min(10, M.shape[0]); return pd.DataFrame(M[:s, :s])
-        with st.expander("Prévia A (10×10)"): st.dataframe(preview(A))
-        with st.expander("Prévia B (10×10)"): st.dataframe(preview(B))
-
-        # Downloads (.npy)
-        bA, bB = BytesIO(), BytesIO()
-        np.save(bA, A); bA.seek(0)
-        np.save(bB, B); bB.seek(0)
-        st.download_button("Baixar A (npy)", data=bA, file_name="A.npy")
-        st.download_button("Baixar B (npy)", data=bB, file_name="B.npy")
-
-        st.markdown("**Primeiros 12 valores de n(x)²:**")
-        st.write(np.round((n_x[:12])**2, 6))
+        # (Sem downloads, sem prévias, sem listas adicionais)
     except Exception as e:
         st.error(f"Erro ao montar as matrizes: {e}")
-
