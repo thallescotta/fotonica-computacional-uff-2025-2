@@ -1,475 +1,335 @@
-# app.py — App Streamlit (único arquivo) para montar A e B (guia planar)
-# Atualizado com as orientações do professor na aula de 06/11/2025:
-# - Divisão em 3 partes: pré-processamento (matrizes A e B),
-#   processamento (autovalores/autovetores, análogo a eig(A,B) do MATLAB)
-#   e pós-processamento (visualização dos modos).
-# - Filtro manual dos n_eff entre dois índices (por ex. 3.55 e 3.60).
-# Nesta versão eu (Thalles) implementei a Etapa 1 completa
-# (montagem de A e B) + início da Etapa 2 (cálculo dos modos e filtragem).
+# app.py — Análise modal TE 1D (FDM) em Streamlit
+#
+# Versão alinhada com a aula de 06/11/2025 do Prof. Andres Pablo López Barbero:
+# - Pré-processamento: entrada de dados e montagem das matrizes A e B
+# - Processamento: solução do problema generalizado A v = λ B v usando eig
+# - Pós-processamento: extração de n_eff, filtragem entre n_min e n_max
+#   e visualização dos modos físicos.
+#
+# Observação (registro para o professor):
+# Na aula de 06/11/2025 o senhor enfatizou:
+#  • Usar eig(A,B) para obter autovalores/autovetores (λ = n_eff^2);
+#  • Fazer a raiz quadrada de λ para obter n_eff;
+#  • Filtrar os n_eff em um intervalo físico (ex.: 3.55 a 3.60),
+#    pois os demais autovalores podem ser complexos ou não-físicos;
+#  • Para o momento, focar em um único comprimento de onda (um ponto),
+#    deixando o diagrama de dispersão (varrer λ) para uma etapa posterior.
+# Este app implementa exatamente essa primeira etapa e segue essas decisões.
 
-import math
 import numpy as np
-import pandas as pd
 import streamlit as st
 
-st.set_page_config(page_title="Matrizes A, B e Modos (Guia Planar)", layout="wide")
+try:
+    from scipy.linalg import eigh  # versão simétrica de eig(A,B)
+    SCIPY_OK = True
+except Exception:
+    SCIPY_OK = False
 
-# ======= ESTILO (tema escuro + área principal mais larga + sidebar azul) =======
-st.markdown(
+# --------------------------------------------------------------------
+# Funções numéricas
+# --------------------------------------------------------------------
+
+
+def montar_malha_e_indice(Np: int, t_layers, n_layers):
     """
-    <style>
-      /* App escuro */
-      .stApp { background: #000000; color: #e5e7eb; }
-      h1, h2, h3 { line-height: 1.2; color: #e5e7eb; }
+    Monta a malha 1D em x e o perfil de índice n(x) em degraus.
 
-      /* Sidebar azul */
-      section[data-testid="stSidebar"] > div {
-        background: #020617;
-        border-right: 1px solid #1f2937;
-      }
-      section[data-testid="stSidebar"] h1,
-      section[data-testid="stSidebar"] h2,
-      section[data-testid="stSidebar"] h3 {
-        color: #e5e7eb;
-      }
+    Parâmetros
+    ----------
+    Np       : número de pontos da malha
+    t_layers : lista/array com espessuras de cada camada [µm]
+    n_layers : lista/array com índices de refração de cada camada
 
-      /* Ajuste de largura do container principal */
-      .main .block-container {
-        max-width: 1200px;
-        padding-top: 1rem;
-      }
+    Retorna
+    -------
+    x   : coordenadas [µm]
+    n_x : perfil n(x) amostrado em Np pontos
+    dx  : passo de malha [µm]
+    Lx  : comprimento total [µm]
+    """
+    t_layers = np.array(t_layers, dtype=float)
+    n_layers = np.array(n_layers, dtype=float)
 
-      /* Botão principal */
-      .stButton > button{
-        background: #2563eb;
-        color: #ffffff;
-        border: 1px solid #1e40af;
-        border-radius: 10px;
-        padding: 0.6rem 1rem;
-        font-weight: 700;
-        box-shadow: 0 4px 14px rgba(37,99,235,0.25);
-      }
-      .stButton > button:hover{ background: #1d4ed8; border-color: #1e3a8a; }
+    Lx = float(np.sum(t_layers))
+    x = np.linspace(-Lx / 2, Lx / 2, Np)
+    dx = x[1] - x[0]
 
-      /* Boxes/expanders */
-      .stAlert, .stDataFrame, .st-expander {
-        border-radius: 12px !important;
-        border: 1px solid #1f2937;
-      }
+    # Constrói n(x) como degraus simples: divide o intervalo em
+    # segmentos proporcionais às espessuras.
+    edges = np.concatenate(([0.0], np.cumsum(t_layers)))  # em [0, Lx]
+    x_shift = x + Lx / 2  # leva [-Lx/2, Lx/2] -> [0, Lx]
 
-      /* Bloco de código (pseudocódigo) compacto */
-      div.stCode{
-        background:#0f1a2b;
-        border:1px solid #1f2937;
-        border-radius:12px;
-        padding:8px 10px;
-      }
-      div.stCode pre{ margin:0; }
-      div.stCode code{
-        font-size:12px;
-        line-height:1.2;
-        color:#e5e7eb;
-      }
-    </style>
-    """,
-    unsafe_allow_html=True,
-)
+    n_x = np.zeros_like(x_shift)
+    for i in range(len(t_layers)):
+        mask = (x_shift >= edges[i]) & (x_shift <= edges[i + 1] + 1e-12)
+        n_x[mask] = n_layers[i]
 
-# ======= CAPA (logo + seus dados) =======
-LOGO_URL = "https://raw.githubusercontent.com/thallescotta/logo-ppgio-vetorizado/main/SVG-PPGIO_invert_preto_para_branco.png"
+    return x, n_x, dx, Lx
 
-st.markdown(
-    f"""
-    <div style="display:flex; gap:24px; align-items:center; margin:10px 0 12px 0;">
-      <img src="{LOGO_URL}" alt="Logo PPGIO" style="width:320px; max-width:40vw;" />
-      <div>
-        <h1 style="margin:0;">Matrizes A, B e Modos - Guia Planar</h1>
-        <p style="margin:6px 0 0 0; opacity:.9;">
-          <strong>Thalles Cotta Fontainha</strong>, <strong>PPGIO Matrícula:</strong> 2410091DIOAMA
-        </p>
-        <p style="margin:0; opacity:.9;">
-          <em>"Fotonica Analise Modal e BPM V2.pdf"</em> recebido em 11/09/2025
-        </p>
-        <p style="margin:0; opacity:.9;">
-          Orientações de implementação discutidas em aula no dia <strong>06/11/2025</strong>
-          (divisão em pré-processamento, processamento e pós-processamento, uso de autovalores tipo eig(A,B) e filtragem de n_eff).
-        </p>
-        <p style="margin:0; opacity:.9;">
-          Disciplina: <strong>Fotônica Computacional (TCE11209 - UFF)</strong> •
-          Professor: <strong>Andres Pablo Lopez Barbero</strong>
-        </p>
-      </div>
-    </div>
-    """,
-    unsafe_allow_html=True,
-)
 
-# ======= SIDEBAR (Parâmetros mínimos que o professor pediu) =======
-with st.sidebar:
-    st.header("Parâmetros")
+def montar_matrizes_A_B(Np: int, x, n_x, dx, lam_um: float):
+    """
+    Monta as matrizes densas A e B como no script MATLAB:
 
-    # nº de camadas
-    n_camadas = st.number_input("Número de camadas (≥2)", min_value=2, value=3, step=1)
+        D2p  = tridiag(-2, 1, 1) / dx^2
+        k0   = 2*pi/lambda
+        k2dx = diag((k0*n(x))^2)
+        A    = D2p + k2dx
+        B    = k0^2 * I
 
-    st.markdown("**Informe largura e índice n para cada camada** (mesmas unidades que λ).")
+    Retorna A, B, k0, k2vec (vetor (k0*n(x))^2).
+    """
+    c = 1.0 / dx**2
+    main = (-2.0 * c) * np.ones(Np)
+    off = (1.0 * c) * np.ones(Np - 1)
+    D2p = (
+        np.diag(main, 0)
+        + np.diag(off, 1)
+        + np.diag(off, -1)
+    )
 
-    larguras = []
-    indices_n = []
+    k0 = 2.0 * np.pi / lam_um
+    k2vec = (k0 * n_x) ** 2
+    k2dx = np.diag(k2vec)
 
-    for i in range(n_camadas):
-        c1, c2 = st.columns(2)
-        key_L = f"L{i}"
-        key_n = f"n{i}"
+    A = D2p + k2dx
+    B = (k0**2) * np.eye(Np)
 
-        # Valores padrão inspirados no exemplo do professor:
-        # 3 camadas: 50 | 1 | 50 e 3.55 | 3.60 | 3.55
-        if n_camadas == 3:
-            if i == 0 or i == 2:
-                default_L = 50.0
-                default_n = 3.55
-            else:
-                default_L = 1.0
-                default_n = 3.60
-        else:
-            # Outras quantidades: bordas com valor "cladding" e interior "núcleo"
-            if i == 0 or i == n_camadas - 1:
-                default_L = 50.0
-                default_n = 3.55
-            else:
-                default_L = 1.0
-                default_n = 3.60
+    return A, B, k0, k2vec
 
-        L = c1.number_input(
-            f"Largura camada {i+1}",
-            min_value=0.0,
-            value=float(default_L),
-            step=0.1,
-            format="%.6g",
-            key=key_L,
-        )
-        n_val = c2.number_input(
-            f"n da camada {i+1}",
-            min_value=0.0,
-            value=float(default_n),
-            step=0.001,
-            format="%.6g",
-            key=key_n,
+
+def resolver_modal(A, B):
+    """
+    Resolve A v = λ B v e devolve:
+
+    neff   : array com n_eff (ordenado DECRESCENTE)
+    neff2  : n_eff^2 correspondente
+    V_sort : matriz cujas colunas são os autovetores associados.
+    """
+    if not SCIPY_OK:
+        raise RuntimeError(
+            "SciPy não disponível. Instale scipy para resolver o problema de autovalores."
         )
 
-        larguras.append(L)
-        indices_n.append(n_val)
+    # eigh(A,B) -> autovalores λ em ordem crescente,
+    # autovetores nas colunas de V.
+    w, V_raw = eigh(A, B)
 
-    # Discretização e comprimento de onda
-    Np = st.number_input("Np (nº de pontos, ≥3)", min_value=3, value=101, step=1)
-    lamb = st.number_input(
-        "λ (comprimento de onda)",
-        min_value=1e-12,
-        value=1.00,
-        step=0.01,
-        format="%.2f",
-    )
+    neff2 = np.real(w)          # n_eff^2
+    neff2[neff2 < 0] = np.nan   # descarta negativos
 
-    st.markdown("---")
-    st.markdown(
-        "**Janela de filtragem de n_eff**  \n"
-        "(conforme combinado na aula de 06/11/2025: filtrar entre os índices das camadas)"
-    )
+    neff = np.sqrt(neff2)       # n_eff
 
-    if len(indices_n) > 0:
-        n_min_default = float(min(indices_n))
-        n_max_default = float(max(indices_n))
-    else:
-        n_min_default = 0.0
-        n_max_default = 1.0
-
-    neff_min = st.number_input(
-        "n_eff mínimo (limite inferior da janela)",
-        value=n_min_default,
-        step=0.001,
-        format="%.6f",
-    )
-    neff_max = st.number_input(
-        "n_eff máximo (limite superior da janela)",
-        value=n_max_default,
-        step=0.001,
-        format="%.6f",
-    )
-
-    st.markdown(
-        "<small>Obs.: em muitos exemplos de validação, usa-se "
-        "n_eff ∈ [n_cladding, n_core], por ex. [3.55, 3.60].</small>",
-        unsafe_allow_html=True,
-    )
-
-    montar = st.button("Montar A, B e calcular modos", use_container_width=True)
-
-# ======= DESCRIÇÃO + PSEUDOCÓDIGO (ETAPA 1 + visão da ETAPA 2) =======
-st.markdown(
-    "#### Etapa 1: montar as matrizes A e B  \n"
-    "(Construir as matrizes A e B para o guia planar com camadas arbitrárias, "
-    "a partir dos dados de entrada.)"
-)
-
-pseudo = """\
-# Entradas do usuário:
-# n_camadas  -> número de camadas do guia
-# largura[i] -> largura da i-ésima camada (mesmas unidades de λ)
-# n[i]       -> índice de refração da i-ésima camada
-# Np         -> número de pontos da discretização (≥3)
-# λ (lambda) -> comprimento de onda
-# i, j       -> índices da malha (0..Np-1) para linhas/colunas das matrizes
-# x_i, x_j   -> posições espaciais correspondentes (x_i = i·Δx, x_j = j·Δx)
-
-L_total = sum(largura)             # largura total do guia
-Δx      = L_total/(Np-1)           # passo da malha 1D
-k0      = 2*π/λ                    # número de onda no vácuo
-x       = linspace(0, L_total, Np) # grade uniforme
-
-# Perfil n(x):
-limites = [0] + cumsum(largura)    # fronteiras acumuladas das camadas
-n_x     = array de tamanho Np
-
-for cada x_j em x:                 # j = 0..Np-1
-    encontre c tal que limites[c-1] ≤ x_j < limites[c]
-    n_x[j] = n[c]                  # índice de refração da camada c
-
-# Matrizes:
-D2      = tridiag(1, -2, 1)/(Δx**2) # operador de 2ª derivada (FDM)
-Diag_n2 = diag(n_x**2)              # diagonal com n(x)^2
-A       = D2 + (k0**2)*Diag_n2      # matriz do problema generalizado
-B       = (k0**2)*I                 # matriz massa (diagonal)
-
-# (Visão da Etapa 2 – Processamento, discutida em 06/11/2025)
-# Problema de autovalores generalizado: A·v = λ·B·v
-# Como B = k0²·I, o problema é equivalente a:
-#   (A / k0²)·v = λ·v,   onde λ = n_eff²
-#
-# Passos:
-# 1) Calcular autovalores e autovetores de M = A / k0²:
-#       vals, V = eig(M)              # análogo ao eig(A,B) do MATLAB
-# 2) n_eff² = vals (parte real, valores negativos → 0)
-# 3) n_eff  = sqrt(n_eff²)
-# 4) Ordenar n_eff (por exemplo, em ordem decrescente) e normalizar colunas de V
-#    para |E|max = 1.
-# 5) Filtrar somente n_eff entre [n_eff_min, n_eff_max] (janela definida pelo usuário).
-"""
-
-st.code(pseudo, language="python")
-
-# ======= FUNÇÕES DE CÁLCULO =======
-def montar_AB(larguras, indices_n, Np, lamb):
-    """
-    Pré-processamento: monta as matrizes A e B (densas) e o perfil n(x).
-    Implementa o mesmo conceito do código em MATLAB:
-    - A = D2 + k0^2 * diag(n(x)^2)
-    - B = k0^2 * I
-    """
-    L_total = float(sum(larguras))
-    dx = L_total / (Np - 1)
-    k0 = 2.0 * math.pi / float(lamb)
-    x = np.linspace(0.0, L_total, Np)
-
-    # Perfil n(x) por faixas (camadas)
-    limites = np.concatenate(([0.0], np.cumsum(larguras)))
-    n_x = np.empty(Np, dtype=float)
-
-    for j, xj in enumerate(x):
-        # Garante que o último ponto caia na última camada
-        if j == Np - 1:
-            c = len(indices_n)
-        else:
-            c = len(indices_n)
-            for idx_camada in range(1, len(indices_n) + 1):
-                if limites[idx_camada - 1] <= xj < limites[idx_camada]:
-                    c = idx_camada
-                    break
-        n_x[j] = indices_n[c - 1]
-
-    # Operador de segunda derivada (diferenças finitas centradas, tridiagonal)
-    D2 = np.zeros((Np, Np), dtype=float)
-    idx = np.arange(Np)
-    D2[idx, idx] = -2.0
-    if Np > 1:
-        D2[idx[1:], idx[:-1]] = 1.0
-        D2[idx[:-1], idx[1:]] = 1.0
-    D2 /= dx ** 2
-
-    # Matrizes A e B
-    A = D2 + (k0 ** 2) * np.diag(n_x ** 2)
-    B = (k0 ** 2) * np.eye(Np)
-
-    return A, B, x, n_x, dx, k0, L_total
-
-
-def resolver_modos(A, B, k0, x, neff_min, neff_max):
-    """
-    Processamento: resolve o problema de autovalores equivalente a eig(A,B),
-    obtendo n_eff e modos E(x), e aplica a filtragem pela janela [neff_min, neff_max].
-
-    Como B = k0²·I, o problema generalizado A·v = λ·B·v vira:
-        (A / k0²)·v = λ·v,   com λ = n_eff².
-    """
-    # Matriz equivalente ao B^{-1}·A
-    M = A / (k0 ** 2)
-
-    # Como M é simétrica real, usamos eigh (autovalores reais, ordenados crescentes)
-    eigvals, eigvecs = np.linalg.eigh(M)
-
-    # n_eff² e n_eff
-    neff2 = np.maximum(eigvals.real, 0.0)
-    neff = np.sqrt(neff2)
-
-    # Ordenar por n_eff em ordem decrescente (módulos mais "importantes" no final do espectro)
+    # ordena por n_eff decrescente (modo fundamental primeiro)
     idx_sort = np.argsort(neff)[::-1]
     neff_sorted = neff[idx_sort]
-    modos_sorted = eigvecs[:, idx_sort]
+    neff2_sorted = neff2[idx_sort]
+    V_sort = V_raw[:, idx_sort]
 
-    # Normalizar cada modo para |E|max = 1 (como no código MATLAB do colega)
-    for m in range(modos_sorted.shape[1]):
-        vmax = np.max(np.abs(modos_sorted[:, m]))
+    # normalização simples: |E|max = 1
+    for m in range(V_sort.shape[1]):
+        vmax = np.max(np.abs(V_sort[:, m]))
         if vmax > 0:
-            modos_sorted[:, m] /= vmax
+            V_sort[:, m] /= vmax
 
-    # Filtragem: somente modos com n_eff dentro da janela
-    mascara = (neff_sorted >= neff_min) & (neff_sorted <= neff_max)
-    neff_filtrados = neff_sorted[mascara]
-    modos_filtrados = modos_sorted[:, mascara] if modos_sorted.shape[1] > 0 else np.empty((len(x), 0))
-
-    return neff_sorted, modos_sorted, neff_filtrados, modos_filtrados
+    return neff_sorted, neff2_sorted, V_sort
 
 
-def preview_matrix(M, x, s=10):
+def filtrar_intervalo(neff, neff2, V, n_min, n_max):
     """
-    Cria uma submatriz com rótulos i/j e as posições x_i/x_j correspondentes
-    para conferir no papel, como o professor sugeriu.
+    Filtra os modos cujo n_eff esteja entre n_min e n_max.
     """
-    s = min(s, M.shape[0])
-    cols = [f"j={j}  |  x_j={x[j]:.6g}" for j in range(s)]
-    idx = [f"i={i}  |  x_i={x[i]:.6g}" for i in range(s)]
-    return pd.DataFrame(M[:s, :s], columns=cols, index=idx)
+    mask = (neff >= n_min) & (neff <= n_max)
+    return neff[mask], neff2[mask], V[:, mask]
 
 
-# ======= SAÍDA (PRÉ + PROCESSAMENTO + PÓS) =======
-if montar:
-    try:
-        # ------------------- PRÉ-PROCESSAMENTO -------------------
-        A, B, x, n_x, dx, k0, L_total = montar_AB(larguras, indices_n, Np, lamb)
+# --------------------------------------------------------------------
+# Interface Streamlit
+# --------------------------------------------------------------------
 
-        st.subheader("Resumo da discretização e das matrizes (Pré-processamento)")
-        c1, c2, c3 = st.columns(3)
-        c1.metric("Número de camadas", len(larguras))
-        c2.metric("Np", Np)
-        c3.metric("L_total (largura total)", f"{L_total:.6g}")
 
-        c4, c5, c6 = st.columns(3)
-        c4.metric("Δx", f"{dx:.6g}")
-        c5.metric("λ", f"{lamb:.6g}")
-        c6.metric("k0²", f"{k0**2:.6g}")
+st.set_page_config(
+    page_title="Modal TE 1D (FDM) — A·v = λ·B·v",
+    layout="wide",
+)
 
-        # Perfil n(x) resumido
-        st.markdown("**Perfil do índice n(x)** (útil para comparar com o slide do exemplo).")
-        df_nx = pd.DataFrame({"x [unidades de λ]": x, "n(x)": n_x})
-        st.line_chart(df_nx.set_index("x [unidades de λ]"))
+st.title("Análise Modal TE 1D (FDM) — A·v = λ·B·v")
 
-        # Amostras de elementos de A e B para conferência no papel
-        mid = Np // 2
-        st.markdown("**Amostras de A e B (para conferir com o exemplo do livro/slide):**")
-        df_checks = pd.DataFrame(
+with st.expander("📌 Contexto da aula de 06/11/2025", expanded=False):
+    st.markdown(
+        """
+**Registro para o professor**
+
+Na aula de **06/11/2025**, combinamos que esta primeira versão do código em Python
+deveria:
+
+1. **Montar as matrizes densas A e B** a partir dos dados de entrada do guia
+   (camadas, índices e malha 1D);
+2. **Resolver o problema de autovalor generalizado** `A·v = λ·B·v` usando
+   uma rotina equivalente ao `eig(A,B)` do MATLAB;
+3. **Extrair os autovalores físicos** \(n_\\text{eff}^2\), tirar a raiz quadrada
+   para obter \(n_\\text{eff}\) e
+4. **Filtrar os modos** em um intervalo escolhido de \(n_\\text{eff}\),
+   por exemplo entre **3.55** e **3.60**, como discutido em aula.
+
+Esta aplicação faz exatamente essa etapa de **Processamento** (para um único λ),
+deixando o diagrama de dispersão (varrer λ) para uma fase posterior.
+"""
+    )
+
+st.sidebar.header("⚙️ Pré-processamento — Parâmetros de entrada")
+
+# Valores padrão = exemplo do script MATLAB de referência
+lam_um = st.sidebar.number_input(
+    "Comprimento de onda λ [µm]",
+    min_value=0.1,
+    max_value=5.0,
+    value=1.0,
+    step=0.05,
+)
+
+Np = st.sidebar.number_input(
+    "Número de pontos na malha (Np)",
+    min_value=100,
+    max_value=5000,
+    value=1000,
+    step=100,
+)
+
+st.sidebar.markdown("#### Camadas do guia (exemplo 3 camadas)")
+
+n1 = st.sidebar.number_input("n₁ (camada 1 - cladding)", value=3.55, step=0.01)
+t1 = st.sidebar.number_input("t₁ [µm]", value=50.0, step=1.0)
+
+n2 = st.sidebar.number_input("n₂ (camada 2 - núcleo)", value=3.60, step=0.01)
+t2 = st.sidebar.number_input("t₂ [µm]", value=1.0, step=0.1)
+
+n3 = st.sidebar.number_input("n₃ (camada 3 - cladding)", value=3.55, step=0.01)
+t3 = st.sidebar.number_input("t₃ [µm]", value=50.0, step=1.0)
+
+st.sidebar.markdown("#### Intervalo de filtragem para nₑff")
+
+neff_min = st.sidebar.number_input(
+    "nₑff mínimo", value=3.55, step=0.01, format="%.4f"
+)
+neff_max = st.sidebar.number_input(
+    "nₑff máximo", value=3.60, step=0.01, format="%.4f"
+)
+
+st.sidebar.markdown("----")
+run_btn = st.sidebar.button("▶️ Calcular modos (Processamento)")
+
+
+if not SCIPY_OK:
+    st.error(
+        "SciPy não está disponível. Instale o pacote `scipy` "
+        "para resolver o problema de autovalores: `pip install scipy`."
+    )
+
+if run_btn and SCIPY_OK:
+    # --------------------------------------------------------------
+    # PRÉ-PROCESSAMENTO: malha e perfil n(x)
+    # --------------------------------------------------------------
+    n_layers = [n1, n2, n3]
+    t_layers = [t1, t2, t3]
+
+    x, n_x, dx, Lx = montar_malha_e_indice(Np, t_layers, n_layers)
+
+    st.subheader("Pré-processamento")
+    st.write(
+        f"λ = {lam_um:.3f} µm | Np = {Np} | Lx = {Lx:.2f} µm | dx = {dx:.4f} µm"
+    )
+
+    # --------------------------------------------------------------
+    # PROCESSAMENTO: montagem de A, B e solução do autoproblema
+    # --------------------------------------------------------------
+    A, B, k0, k2vec = montar_matrizes_A_B(Np, x, n_x, dx, lam_um)
+
+    st.subheader("Processamento — Autovalores e Autovetores")
+    st.write(
+        "Resolvendo o problema generalizado **A·v = λ·B·v** "
+        "com `λ = n_eff²` via `scipy.linalg.eigh(A, B)`."
+    )
+
+    neff_all, neff2_all, V_all = resolver_modal(A, B)
+
+    # --------------------------------------------------------------
+    # PÓS-PROCESSAMENTO: filtragem no intervalo [neff_min, neff_max]
+    # --------------------------------------------------------------
+    neff_fil, neff2_fil, V_fil = filtrar_intervalo(
+        neff_all, neff2_all, V_all, neff_min, neff_max
+    )
+
+    col1, col2 = st.columns(2)
+
+    with col1:
+        st.markdown("#### Perfil de índice n(x)")
+        import matplotlib.pyplot as plt
+
+        fig1, ax1 = plt.subplots()
+        ax1.plot(x, n_x)
+        ax1.set_xlabel("x [µm]")
+        ax1.set_ylabel("n(x)")
+        ax1.grid(True)
+        st.pyplot(fig1)
+
+    with col2:
+        st.markdown("#### Perfil de (k₀·n(x))²")
+        fig2, ax2 = plt.subplots()
+        ax2.plot(x, k2vec)
+        ax2.set_xlabel("x [µm]")
+        ax2.set_ylabel("(k₀ n(x))² [µm⁻²]")
+        ax2.grid(True)
+        st.pyplot(fig2)
+
+    st.subheader("Autovalores nₑff (todos)")
+
+    # tabela resumida com todos os n_eff
+    import pandas as pd
+
+    df_all = pd.DataFrame(
+        {
+            "modo": np.arange(1, len(neff_all) + 1),
+            "n_eff": neff_all,
+            "n_eff²": neff2_all,
+        }
+    )
+    st.dataframe(df_all.style.format({"n_eff": "{:.6f}", "n_eff²": "{:.6f}"}))
+
+    st.subheader(
+        f"Modos físicos filtrados — {neff_min:.4f} ≤ nₑff ≤ {neff_max:.4f}"
+    )
+
+    if len(neff_fil) == 0:
+        st.warning(
+            "Nenhum autovalor caiu dentro do intervalo de filtragem. "
+            "Ajuste nₑff mínimo/máximo e tente novamente."
+        )
+    else:
+        df_fil = pd.DataFrame(
             {
-                "Elemento": [
-                    "A[0,0]",
-                    "A[0,1]",
-                    "A[1,0]",
-                    f"A[{mid},{mid}]",
-                    "B[0,0]",
-                    f"B[{Np-1},{Np-1}]",
-                ],
-                "Valor": [
-                    A[0, 0],
-                    A[0, 1] if Np > 1 else np.nan,
-                    A[1, 0] if Np > 1 else np.nan,
-                    A[mid, mid],
-                    B[0, 0],
-                    B[Np - 1, Np - 1],
-                ],
+                "modo_filtrado": np.arange(1, len(neff_fil) + 1),
+                "n_eff": neff_fil,
+                "n_eff²": neff2_fil,
             }
         )
-        st.dataframe(df_checks, use_container_width=True)
+        st.dataframe(df_fil.style.format({"n_eff": "{:.6f}", "n_eff²": "{:.6f}"}))
 
-        # Pré-visualizações das submatrizes
-        s = min(10, Np)
-        st.markdown(
-            "**Pré-visualizações das matrizes A e B**  \n"
-            "Linhas = `i` (x_i = i·Δx), colunas = `j` (x_j = j·Δx)."
-        )
+        # Plota perfis de campo dos dois primeiros modos filtrados
+        st.markdown("#### Perfis de campo |E(x)| dos modos filtrados")
 
-        st.markdown(f"**Matriz A — submatriz [0:{s}, 0:{s}] (canto superior esquerdo)**")
-        with st.expander("Mostrar A (0…s-1, 0…s-1)"):
-            st.dataframe(preview_matrix(A, x, s=s), use_container_width=True)
+        n_plot = min(2, V_fil.shape[1])  # até 2 modos
+        fig3, ax3 = plt.subplots()
+        for m in range(n_plot):
+            ax3.plot(x, np.real(V_fil[:, m]), label=f"Modo {m+1}")
+        ax3.set_xlabel("x [µm]")
+        ax3.set_ylabel("Re{E(x)} (normalizado)")
+        ax3.grid(True)
+        ax3.legend()
+        st.pyplot(fig3)
 
-        st.markdown(f"**Matriz B — submatriz [0:{s}, 0:{s}] (canto superior esquerdo)**")
-        with st.expander("Mostrar B (0…s-1, 0…s-1)"):
-            st.dataframe(preview_matrix(B, x, s=s), use_container_width=True)
-
-        # ------------------- PROCESSAMENTO -------------------
-        st.markdown("---")
-        st.subheader("Etapa 2: processamento (autovalores/autovetores)")
-
-        st.info(
-            "Esta etapa implementa, em Python, o que o professor descreveu na aula de 06/11/2025 "
-            "como o uso de `eig(A,B)` no MATLAB:\n\n"
-            "- Resolvemos o problema equivalente `(A / k0²)·v = λ·v`, com λ = n_eff².\n"
-            "- Calculamos `n_eff`, ordenamos e filtramos apenas os valores dentro da janela "
-            "definida `[n_eff_min, n_eff_max]`."
-        )
-
-        neff_all, modos_all, neff_filtrados, modos_filtrados = resolver_modos(
-            A, B, k0, x, neff_min, neff_max
-        )
-
-        df_neff = pd.DataFrame(
-            {
-                "índice (ordenado)": np.arange(len(neff_all)),
-                "n_eff": neff_all,
-                "β = k0·n_eff": k0 * neff_all,
-            }
-        )
-        st.markdown("**Todos os autovalores (n_eff)** — ainda contêm soluções não físicas.")
-        st.dataframe(df_neff, use_container_width=True)
-
-        # ------------------- PÓS-PROCESSAMENTO (VISUALIZAÇÃO DOS MODOS GUIADOS) -------------------
-        st.markdown("---")
-        st.subheader("Etapa 3: pós-processamento (modos guiados e campos E(x))")
-
-        if len(neff_filtrados) == 0:
-            st.warning(
-                "Nenhum n_eff caiu dentro da janela informada "
-                f"[{neff_min:.6f}, {neff_max:.6f}]. "
-                "Ajuste os valores de filtragem (por exemplo, use os índices das camadas do guia)."
-            )
-        else:
-            df_neff_filt = pd.DataFrame(
-                {
-                    "modo guiado": np.arange(len(neff_filtrados)),
-                    "n_eff (filtrado)": neff_filtrados,
-                    "β = k0·n_eff": k0 * neff_filtrados,
-                }
-            )
-            st.markdown("**Modos guiados após filtragem (n_eff_min ≤ n_eff ≤ n_eff_max):**")
-            st.dataframe(df_neff_filt, use_container_width=True)
-
-            st.markdown(
-                "#### Perfis de campo E(x) normalizados (|E|max = 1)  \n"
-                "Esses gráficos correspondem à parte de pós-processamento que o professor "
-                "comentou, em que se plota o campo dos modos físicos."
-            )
-
-            # Um gráfico por modo guiado filtrado
-            for idx_modo in range(modos_filtrados.shape[1]):
-                neff_val = neff_filtrados[idx_modo]
-                st.markdown(f"**Modo guiado {idx_modo} — n_eff = {neff_val:.6f}**")
-                df_plot = pd.DataFrame({"x [unid. de λ]": x, "E(x)": modos_filtrados[:, idx_modo]})
-                st.line_chart(df_plot.set_index("x [unid. de λ]"))
-
-    except Exception as e:
-        st.error(f"Erro ao montar as matrizes ou calcular os modos: {e}")
+else:
+    st.info(
+        "Defina os parâmetros no menu lateral e clique em "
+        "**'Calcular modos (Processamento)'** para executar."
+    )
